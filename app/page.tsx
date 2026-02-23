@@ -747,7 +747,7 @@ export default function Home() {
       colorScheme,
       allAlarmsEnabled,
       exportDate: new Date().toISOString(),
-      version: '1.1.13'
+      version: '1.1.14'
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -949,43 +949,43 @@ export default function Home() {
       return true;
     };
 
-    if (editingAlarm) {
-      const played = shouldMarkAsPlayed();
-      
-      const updated = alarms.map(alarm => 
-        alarm.id === editingAlarm.id 
-          ? { 
-              ...alarm, 
-              time: formattedTime, 
-              sound: newAlarmSound, 
-              soundId: selectedSoundId,
-              played: played,
-              days: selectedDays,
-              interruptPrevious: interruptPrevious,
-              enabled: editingAlarm.enabled,
-              volume: volume,
-              customUrl: selectedSoundId === "custom" ? customSoundUrl : undefined,
-            }
-          : alarm
-      );
-      setAlarms([...updated]);
-    } else {
-      const newAlarm = {
-        id: Date.now(),
-        time: formattedTime,
-        sound: newAlarmSound,
-        soundId: selectedSoundId,
-        played: false,
-        days: selectedDays,
-        interruptPrevious: interruptPrevious,
-        enabled: true,
-        volume: volume,
-        customUrl: selectedSoundId === "custom" ? customSoundUrl : undefined,
-      };
-      const updated = [...alarms, newAlarm];
-      setAlarms(updated);
-    }
-
+if (editingAlarm) {
+  // When editing an alarm, always reset played status to false
+  // This gives the user a fresh start after making changes
+  const updated = alarms.map(alarm => 
+    alarm.id === editingAlarm.id 
+      ? { 
+          ...alarm, 
+          time: formattedTime, 
+          sound: newAlarmSound, 
+          soundId: selectedSoundId,
+          played: false,  // ✅ Always reset when editing
+          days: selectedDays,
+          interruptPrevious: interruptPrevious,
+          enabled: editingAlarm.enabled,
+          volume: volume,
+          customUrl: selectedSoundId === "custom" ? customSoundUrl : undefined,
+        }
+      : alarm
+  );
+  setAlarms([...updated]);
+} else {
+  // New alarm - starts with played: false
+  const newAlarm = {
+    id: Date.now(),
+    time: formattedTime,
+    sound: newAlarmSound,
+    soundId: selectedSoundId,
+    played: false,
+    days: selectedDays,
+    interruptPrevious: interruptPrevious,
+    enabled: true,
+    volume: volume,
+    customUrl: selectedSoundId === "custom" ? customSoundUrl : undefined,
+  };
+  const updated = [...alarms, newAlarm];
+  setAlarms(updated);
+}
     setNewAlarmSound("");
     setCustomSoundUrl("");
     setSelectedDays([]);
@@ -1024,7 +1024,7 @@ export default function Home() {
       <header className={`p-6 border-b flex justify-between items-center ${
         isDarkMode ? "border-slate-700" : "border-gray-300"
       }`}>
-        <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.0</span></h1>
+        <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.14</span></h1>
         
         <button
           id="menu-button"
