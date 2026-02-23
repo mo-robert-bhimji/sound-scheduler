@@ -926,15 +926,78 @@ const handleTestSound = (soundId: string, customUrl?: string, volumeLevel: numbe
   // Stop any other playing sound first
   console.log('⏹ Stopping other sounds and starting new one');
   stopAllSounds();
-  
-  if (soundId === "custom" && customUrl) {
-    setPlayingSoundId(soundId);
-    playSoundPattern("custom", false, customUrl, volumeLevel);
-  } else {
-    const sound = getSoundById(soundId);
-    setPlayingSoundId(soundId);
-    playSoundPattern(sound.type, false, undefined, volumeLevel);
+
+if (soundType === "custom" && customUrl) {
+  const ctx = getAudioContext();
+  if (ctx.state === 'suspended') {
+    ctx.resume();
   }
+  
+  if (currentAudioRef.current) {
+    console.log('⏹ Stopping previous audio before playing new one');
+    currentAudioRef.current.pause();
+    currentAudioRef.current = null;
+  }
+  
+  try {
+    // Create new audio element
+    const audio = new Audio(customUrl);
+    currentAudioRef.current = audio; // Store reference
+    audio.volume = volumeLevel;
+    audio.loop = loop;
+    
+    // Add error handling
+    audio.onerror = (e) => {
+      console.error('❌ Audio playback error:', e);
+      setPlayingSoundId(null);
+      if (!loop) setActiveAlarm(null);
+      currentAudioRef.current = null;
+    };
+    
+    // Handle when audio ends naturally
+    audio.onended = () => {
+      console.log('⏹ Audio ended naturally');
+      if (!loop) {
+        setPlayingSoundId(null);
+        setActiveAlarm(null);
+        currentAudioRef.current = null;
+      }
+    };
+    
+    // Start playback with error handling
+    audio.play().catch(err => {
+      if (err.name !== 'AbortError') {
+        console.error('❌ Playback failed:', err);
+        alert('❌ Unable to play audio. Please check the file or URL.');
+      } else {
+        console.log('ℹ️ Playback was interrupted (normal)');
+      }
+      if (!loop) {
+        setPlayingSoundId(null);
+        setActiveAlarm(null);
+        currentAudioRef.current = null;
+      }
+    });
+    
+    if (!loop) {
+      setTimeout(() => setPlayingSoundId(null), 3000);
+    }
+  } catch (error) {
+    console.error('❌ Error creating audio element:', error);
+    alert('❌ Error loading audio file.');
+  }
+  
+  return;
+}
+  
+ // if (soundId === "custom" && customUrl) {
+ //   setPlayingSoundId(soundId);
+ //   playSoundPattern("custom", false, customUrl, volumeLevel);
+ // } else {
+ //   const sound = getSoundById(soundId);
+ //   setPlayingSoundId(soundId);
+ //   playSoundPattern(sound.type, false, undefined, volumeLevel);
+ // }
 };
 
 const handlePreviewSound = () => {
