@@ -517,15 +517,16 @@ const playSoundPattern = (soundType: string, loop: boolean = false, customUrl?: 
       currentAudioRef.current.loop = loop;
       
       currentAudioRef.current.onerror = (e) => {
-        console.error('❌ Audio playback error:', e);
-        // Don't show alert for AbortError - it's normal when stopping
-        if (e.target?.error?.code !== MediaError.MEDIA_ERR_ABORTED) {
-          alert('❌ Error playing audio file. The file may be corrupted or inaccessible.');
-        }
-        setPlayingSoundId(null);
-        if (!loop) setActiveAlarm(null);
-        currentAudioRef.current = null;
-      };
+  console.error('❌ Audio playback error:', e);
+  // Don't show alert for AbortError - it's normal when stopping
+  const audioElement = e.target as HTMLAudioElement;
+  if (audioElement?.error?.code !== MediaError.MEDIA_ERR_ABORTED) {
+    alert('❌ Error playing audio file. The file may be corrupted or inaccessible.');
+  }
+  setPlayingSoundId(null);
+  if (!loop) setActiveAlarm(null);
+  currentAudioRef.current = null;
+};
       
       currentAudioRef.current.onended = () => {
         console.log('⏹ Audio ended naturally');
@@ -1064,23 +1065,23 @@ const handlePreviewSound = () => {
     }`}>
       
       <header className={`p-6 border-b flex justify-between items-center ${
-        isDarkMode ? "border-slate-700" : "border-gray-300"
-      }`}>
-        <h1 className="text-2xl font-bold">🔔 Sound Scheduler</h1>
-        
-        <button
-          id="menu-button"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className={`p-2 rounded-lg transition-colors ${
-            isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
-          }`}
-          title="Menu"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      </header>
+  isDarkMode ? "border-slate-700" : "border-gray-300"
+}`}>
+  <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.0</span></h1>
+  
+  <button
+    id="menu-button"
+    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    className={`p-2 rounded-lg transition-colors ${
+      isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
+    }`}
+    title="Menu"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+</header>
 
       {isMenuOpen && (
         <div 
