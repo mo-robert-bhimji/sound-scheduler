@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 
-// ============================================================================
-// COLOR SCHEME DEFINITIONS
-// ============================================================================
+// Color schemes
 type ColorScheme = "ocean" | "forest" | "violet" | "sunset" | "slate";
 
 interface ColorTheme {
@@ -78,10 +76,7 @@ const COLOR_SCHEMES: Record<ColorScheme, ColorTheme> = {
 };
 
 export default function Home() {
-  // ==========================================================================
-  // STATE MANAGEMENT
-  // ==========================================================================
-  
+  // State for alarms
   const [alarms, setAlarms] = useState<{
     id: number; 
     time: string; 
@@ -138,7 +133,6 @@ export default function Home() {
   const [pendingAlarms, setPendingAlarms] = useState<typeof alarms[0][]>([]);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
 
-  // Audio refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const oscillatorsRef = useRef<OscillatorNode[]>([]);
   const alarmIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -206,10 +200,6 @@ export default function Home() {
     
     return null;
   };
-
-  // ==========================================================================
-  // EFFECTS
-  // ==========================================================================
 
   useEffect(() => {
     if ("Notification" in window) {
@@ -337,10 +327,6 @@ export default function Home() {
     }
   }, [activeAlarm, pendingAlarms]);
 
-  // ==========================================================================
-  // FILE UPLOAD HANDLER
-  // ==========================================================================
-  
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -361,10 +347,6 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
-  // ==========================================================================
-  // AUDIO FUNCTIONS - IMPROVED CLEANUP
-  // ==========================================================================
-  
   const stopAllSounds = () => {
     console.log('🔇 Stopping all sounds...');
     
@@ -498,81 +480,65 @@ export default function Home() {
     oscillatorsRef.current.push(oscillator);
   };
 
-const playSoundPattern = (soundType: string, loop: boolean = false, customUrl?: string, volumeLevel: number = 0.5) => {
-  if (soundType === "custom" && customUrl) {
-    const ctx = getAudioContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
-    
-    if (currentAudioRef.current) {
-      console.log('⏹ Stopping previous audio before playing new one');
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
-    }
-    
-    try {
-      currentAudioRef.current = new Audio(customUrl);
-      currentAudioRef.current.volume = volumeLevel;
-      currentAudioRef.current.loop = loop;
-      
-      currentAudioRef.current.onerror = (e) => {
-  console.error('❌ Audio playback error:', e);
-  // Don't show alert for AbortError - it's normal when stopping
-  // const audioElement = e.target as HTMLAudioElement;
-
-currentAudioRef.current.onerror = (e) => {
-  console.error('❌ Audio playback error:', e);
-  // Just log the error, don't show alert
-  setPlayingSoundId(null);
-  if (!loop) setActiveAlarm(null);
-  currentAudioRef.current = null;
-};
-
-
-  if (audioElement?.error?.code !== MediaError.MEDIA_ERR_ABORTED) {
-    alert('❌ Error playing audio file. The file may be corrupted or inaccessible.');
-  }
-  setPlayingSoundId(null);
-  if (!loop) setActiveAlarm(null);
-  currentAudioRef.current = null;
-};
-      
-      currentAudioRef.current.onended = () => {
-        console.log('⏹ Audio ended naturally');
-        if (!loop) {
-          setPlayingSoundId(null);
-          setActiveAlarm(null);
-          currentAudioRef.current = null;
-        }
-      };
-      
-      // Play with error handling for AbortError
-      currentAudioRef.current.play().catch(err => {
-        // Ignore AbortError - it's normal when user stops playback
-        if (err.name !== 'AbortError') {
-          console.error('❌ Playback failed:', err);
-          alert('❌ Unable to play audio. Please check the file or URL.');
-        } else {
-          console.log('ℹ️ Playback was interrupted (normal)');
-        }
-        if (!loop) {
-          setPlayingSoundId(null);
-          setActiveAlarm(null);
-          currentAudioRef.current = null;
-        }
-      });
-      
-      if (!loop) {
-        setTimeout(() => setPlayingSoundId(null), 3000);
+  const playSoundPattern = (soundType: string, loop: boolean = false, customUrl?: string, volumeLevel: number = 0.5) => {
+    if (soundType === "custom" && customUrl) {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
       }
-    } catch (error) {
-      console.error('❌ Error creating audio element:', error);
-      alert('❌ Error loading audio file.');
+      
+      if (currentAudioRef.current) {
+        console.log('⏹ Stopping previous audio before playing new one');
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      
+      try {
+        const audio = new Audio(customUrl);
+        currentAudioRef.current = audio;
+        audio.volume = volumeLevel;
+        audio.loop = loop;
+        
+        audio.onerror = (e) => {
+          console.error('❌ Audio playback error:', e);
+          setPlayingSoundId(null);
+          if (!loop) setActiveAlarm(null);
+          currentAudioRef.current = null;
+        };
+        
+        audio.onended = () => {
+          console.log('⏹ Audio ended naturally');
+          if (!loop) {
+            setPlayingSoundId(null);
+            setActiveAlarm(null);
+            currentAudioRef.current = null;
+          }
+        };
+        
+        audio.play().catch(err => {
+          if (err.name !== 'AbortError') {
+            console.error('❌ Playback failed:', err);
+            alert('❌ Unable to play audio. Please check the file or URL.');
+          } else {
+            console.log('ℹ️ Playback was interrupted (normal)');
+          }
+          if (!loop) {
+            setPlayingSoundId(null);
+            setActiveAlarm(null);
+            currentAudioRef.current = null;
+          }
+        });
+        
+        if (!loop) {
+          setTimeout(() => setPlayingSoundId(null), 3000);
+        }
+      } catch (error) {
+        console.error('❌ Error creating audio element:', error);
+        alert('❌ Error loading audio file.');
+      }
+      
+      return;
     }
-    
-    return;
-  }
     
     const ctx = getAudioContext();
     const now = ctx.currentTime;
@@ -680,10 +646,6 @@ currentAudioRef.current.onerror = (e) => {
     }
   };
 
-  // ==========================================================================
-  // LOCALSTORAGE & CLEANUP
-  // ==========================================================================
-
   useEffect(() => {
     const saved = localStorage.getItem('sound-scheduler-alarms');
     if (saved) {
@@ -723,10 +685,6 @@ currentAudioRef.current.onerror = (e) => {
       }
     };
   }, []);
-
-  // ==========================================================================
-  // UTILITY FUNCTIONS
-  // ==========================================================================
 
   const parseTime12Hour = (time12: string) => {
     if (!time12) return { hour: "07", minute: "00", isPM: false };
@@ -783,17 +741,13 @@ currentAudioRef.current.onerror = (e) => {
     );
   };
 
-  // ==========================================================================
-  // EXPORT/IMPORT DATA
-  // ==========================================================================
-
   const handleExportData = () => {
     const data = {
       alarms,
       colorScheme,
       allAlarmsEnabled,
       exportDate: new Date().toISOString(),
-      version: '1.0'
+      version: '1.1.11'
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -837,10 +791,6 @@ currentAudioRef.current.onerror = (e) => {
     reader.readAsText(file);
     event.target.value = '';
   };
-
-  // ==========================================================================
-  // ALARM MANAGEMENT
-  // ==========================================================================
 
   const handleOpenNewAlarm = () => {
     setEditingAlarm(null);
@@ -913,113 +863,50 @@ currentAudioRef.current.onerror = (e) => {
     localStorage.setItem('sound-scheduler-alarms', JSON.stringify(updated));
   };
 
-const handleTestSound = (soundId: string, customUrl?: string, volumeLevel: number = 0.5) => {
-  console.log('🔊 handleTestSound called:', soundId, 'Currently playing:', playingSoundId);
-  
-  // If this exact sound is already playing, stop it
-  if (playingSoundId === soundId) {
-    console.log('⏹ Stopping sound');
-    stopAllSounds();
-    return;
-  }
-  
-  // Stop any other playing sound first
-  console.log('⏹ Stopping other sounds and starting new one');
-  stopAllSounds();
-
-if (soundType === "custom" && customUrl) {
-  const ctx = getAudioContext();
-  if (ctx.state === 'suspended') {
-    ctx.resume();
-  }
-  
-  if (currentAudioRef.current) {
-    console.log('⏹ Stopping previous audio before playing new one');
-    currentAudioRef.current.pause();
-    currentAudioRef.current = null;
-  }
-  
-  try {
-    // Create new audio element
-    const audio = new Audio(customUrl);
-    currentAudioRef.current = audio; // Store reference
-    audio.volume = volumeLevel;
-    audio.loop = loop;
+  const handleTestSound = (soundId: string, customUrl?: string, volumeLevel: number = 0.5) => {
+    console.log('🔊 handleTestSound called:', soundId, 'Currently playing:', playingSoundId);
     
-    // Add error handling
-    audio.onerror = (e) => {
-      console.error('❌ Audio playback error:', e);
-      setPlayingSoundId(null);
-      if (!loop) setActiveAlarm(null);
-      currentAudioRef.current = null;
-    };
-    
-    // Handle when audio ends naturally
-    audio.onended = () => {
-      console.log('⏹ Audio ended naturally');
-      if (!loop) {
-        setPlayingSoundId(null);
-        setActiveAlarm(null);
-        currentAudioRef.current = null;
-      }
-    };
-    
-    // Start playback with error handling
-    audio.play().catch(err => {
-      if (err.name !== 'AbortError') {
-        console.error('❌ Playback failed:', err);
-        alert('❌ Unable to play audio. Please check the file or URL.');
-      } else {
-        console.log('ℹ️ Playback was interrupted (normal)');
-      }
-      if (!loop) {
-        setPlayingSoundId(null);
-        setActiveAlarm(null);
-        currentAudioRef.current = null;
-      }
-    });
-    
-    if (!loop) {
-      setTimeout(() => setPlayingSoundId(null), 3000);
+    // If this exact sound is already playing, stop it
+    if (playingSoundId === soundId) {
+      console.log('⏹ Stopping sound');
+      stopAllSounds();
+      return;
     }
-  } catch (error) {
-    console.error('❌ Error creating audio element:', error);
-    alert('❌ Error loading audio file.');
-  }
-  
-  return;
-}
-  
- // if (soundId === "custom" && customUrl) {
- //   setPlayingSoundId(soundId);
- //   playSoundPattern("custom", false, customUrl, volumeLevel);
- // } else {
- //   const sound = getSoundById(soundId);
- //   setPlayingSoundId(soundId);
- //   playSoundPattern(sound.type, false, undefined, volumeLevel);
- // }
-};
-
-const handlePreviewSound = () => {
-  // If already playing, stop it
-  if (playingSoundId === selectedSoundId) {
+    
+    // Stop any other playing sound first
+    console.log('⏹ Stopping other sounds and starting new one');
     stopAllSounds();
-    return;
-  }
-  
-  // Stop any other playing sound first
-  stopAllSounds();
-  
-  const volumeLevel = volume / 10;
-  
-  if (selectedSoundId === "custom" && customSoundUrl) {
-    setPlayingSoundId(selectedSoundId);
-    playSoundPattern("custom", false, customSoundUrl, volumeLevel);
-  } else {
-    setPlayingSoundId(selectedSoundId);
-    playSoundPattern(getSoundById(selectedSoundId).type, false, undefined, volumeLevel);
-  }
-};
+    
+    if (soundId === "custom" && customUrl) {
+      setPlayingSoundId(soundId);
+      playSoundPattern("custom", false, customUrl, volumeLevel);
+    } else {
+      const sound = getSoundById(soundId);
+      setPlayingSoundId(soundId);
+      playSoundPattern(sound.type, false, undefined, volumeLevel);
+    }
+  };
+
+  const handlePreviewSound = () => {
+    // If already playing, stop it
+    if (playingSoundId === selectedSoundId) {
+      stopAllSounds();
+      return;
+    }
+    
+    // Stop any other playing sound first
+    stopAllSounds();
+    
+    const volumeLevel = volume / 10;
+    
+    if (selectedSoundId === "custom" && customSoundUrl) {
+      setPlayingSoundId(selectedSoundId);
+      playSoundPattern("custom", false, customSoundUrl, volumeLevel);
+    } else {
+      setPlayingSoundId(selectedSoundId);
+      playSoundPattern(getSoundById(selectedSoundId).type, false, undefined, volumeLevel);
+    }
+  };
 
   const handleSaveAlarm = () => {
     if (!newAlarmSound) {
@@ -1129,32 +1016,29 @@ const handlePreviewSound = () => {
     return days.join(", ");
   };
 
-  // ==========================================================================
-  // UI RENDER
-  // ==========================================================================
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
       isDarkMode ? "bg-slate-900 text-white" : "bg-gray-100 text-slate-900"
     }`}>
       
       <header className={`p-6 border-b flex justify-between items-center ${
-  isDarkMode ? "border-slate-700" : "border-gray-300"
-}`}>
-  <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.1</span></h1>
-  
-  <button
-    id="menu-button"
-    onClick={() => setIsMenuOpen(!isMenuOpen)}
-    className={`p-2 rounded-lg transition-colors ${
-      isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
-    }`}
-    title="Menu"
-  >
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  </button>
-</header>
+        isDarkMode ? "border-slate-700" : "border-gray-300"
+      }`}>
+        <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.0</span></h1>
+        
+        <button
+          id="menu-button"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className={`p-2 rounded-lg transition-colors ${
+            isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
+          }`}
+          title="Menu"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </header>
 
       {isMenuOpen && (
         <div 
@@ -1490,35 +1374,34 @@ const handlePreviewSound = () => {
                       )}
                     </button>
                     
-<button 
-  onClick={() => handleTestSound(alarm.soundId, customUrl, alarm.volume / 10)}
-  disabled={!canTrigger || activeAlarm !== null}
-  className={`p-2 rounded-full transition-colors ${
-    isPlaying
-      ? "bg-red-500 text-white animate-pulse"  // Red when playing (stop button)
-      : !canTrigger
-        ? isDarkMode 
-          ? "text-slate-600 cursor-not-allowed" 
-          : "text-gray-300 cursor-not-allowed"
-        : isDarkMode 
-          ? "text-green-400 hover:bg-slate-700" 
-          : "text-green-600 hover:bg-gray-100"
-  }`}
-  title={isPlaying ? "Stop sound" : !canTrigger ? (isMuted ? "Muted (volume = 0)" : "Disabled alarm") : "Test sound"}
->
-  {isPlaying ? (
-    // Stop icon (two vertical bars)
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <rect x="6" y="4" width="4" height="16"/>
-      <rect x="14" y="4" width="4" height="16"/>
-    </svg>
-  ) : (
-    // Play icon (triangle)
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M8 5v14l11-7z"/>
-    </svg>
-  )}
-</button>                    
+                    <button 
+                      onClick={() => handleTestSound(alarm.soundId, customUrl, alarm.volume / 10)}
+                      disabled={!canTrigger || activeAlarm !== null}
+                      className={`p-2 rounded-full transition-colors ${
+                        isPlaying
+                          ? "bg-red-500 text-white animate-pulse"
+                          : !canTrigger
+                            ? isDarkMode 
+                              ? "text-slate-600 cursor-not-allowed" 
+                              : "text-gray-300 cursor-not-allowed"
+                            : isDarkMode 
+                              ? "text-green-400 hover:bg-slate-700" 
+                              : "text-green-600 hover:bg-gray-100"
+                      }`}
+                      title={isPlaying ? "Stop sound" : !canTrigger ? (isMuted ? "Muted (volume = 0)" : "Disabled alarm") : "Test sound"}
+                    >
+                      {isPlaying ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                          <rect x="6" y="4" width="4" height="16"/>
+                          <rect x="14" y="4" width="4" height="16"/>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      )}
+                    </button>
+                    
                     {isPending && (
                       <button 
                         onClick={() => handlePlayPendingAlarm(alarm)}
@@ -1612,18 +1495,18 @@ const handlePreviewSound = () => {
 
       {isModalOpen && (
         <div 
-  		className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-  		onClick={() => {
-    			stopAllSounds(); // Stop any playing preview
-    			setIsModalOpen(false);
-  		}}
-		>
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            stopAllSounds();
+            setIsModalOpen(false);
+          }}
+        >
           <div 
-    className={`w-full max-w-md rounded-xl p-6 shadow-2xl transition-colors ${
-      isDarkMode ? "bg-slate-800 text-white" : "bg-white text-slate-900"
-    }`}
-    onClick={(e) => e.stopPropagation()}
-  >
+            className={`w-full max-w-md rounded-xl p-6 shadow-2xl transition-colors ${
+              isDarkMode ? "bg-slate-800 text-white" : "bg-white text-slate-900"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-xl font-bold mb-4">
               {editingAlarm ? "Edit Alarm" : "Add New Alarm"}
             </h2>
@@ -1803,32 +1686,30 @@ const handlePreviewSound = () => {
                     ))}
                   </select>
                   
-<button
-  type="button"
-  onClick={handlePreviewSound}
-  disabled={selectedSoundId === "custom" && !customSoundUrl}
-  className={`p-3 rounded-lg transition-colors ${
-    playingSoundId === selectedSoundId
-      ? "bg-red-500 text-white"  // Red when playing (stop button)
-      : isDarkMode
-        ? "bg-slate-700 hover:bg-slate-600 text-green-400"
-        : "bg-gray-200 hover:bg-gray-300 text-green-600"
-  }`}
-  title={playingSoundId === selectedSoundId ? "Stop preview" : "Preview sound"}
->
-  {playingSoundId === selectedSoundId ? (
-    // Stop icon
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <rect x="6" y="4" width="4" height="16"/>
-      <rect x="14" y="4" width="4" height="16"/>
-    </svg>
-  ) : (
-    // Play icon
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M8 5v14l11-7z"/>
-    </svg>
-  )}
-</button>
+                  <button
+                    type="button"
+                    onClick={handlePreviewSound}
+                    disabled={selectedSoundId === "custom" && !customSoundUrl}
+                    className={`p-3 rounded-lg transition-colors ${
+                      playingSoundId === selectedSoundId
+                        ? "bg-red-500 text-white"
+                        : isDarkMode
+                          ? "bg-slate-700 hover:bg-slate-600 text-green-400"
+                          : "bg-gray-200 hover:bg-gray-300 text-green-600"
+                    }`}
+                    title={playingSoundId === selectedSoundId ? "Stop preview" : "Preview sound"}
+                  >
+                    {playingSoundId === selectedSoundId ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="6" y="4" width="4" height="16"/>
+                        <rect x="14" y="4" width="4" height="16"/>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    )}
+                  </button>
                 </div>
                 
                 {selectedSoundId === "custom" && (
@@ -1936,7 +1817,10 @@ const handlePreviewSound = () => {
 
             <div className="flex justify-end gap-3 mt-6">
               <button 
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  stopAllSounds();
+                  setIsModalOpen(false);
+                }}
                 className={`px-4 py-2 rounded-lg font-medium ${
                   isDarkMode ? "bg-slate-700 hover:bg-slate-600" : "bg-gray-200 hover:bg-gray-300"
                 }`}
