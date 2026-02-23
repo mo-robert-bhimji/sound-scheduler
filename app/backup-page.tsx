@@ -179,7 +179,7 @@ export default function Home() {
     { id: "digital-beep", name: "Digital Beep", type: "beep" as const },
     { id: "soft-chime", name: "Soft Chime", type: "soft" as const },
     { id: "nature-birds", name: "Nature Birds", type: "birds" as const },
-    { id: "custom", name: "Custom Sound 🎵", type: "custom" as const },
+    { id: "custom", name: "🎵 Custom Sound", type: "custom" as const },
   ];
 
   // Day options
