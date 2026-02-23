@@ -519,7 +519,17 @@ const playSoundPattern = (soundType: string, loop: boolean = false, customUrl?: 
       currentAudioRef.current.onerror = (e) => {
   console.error('❌ Audio playback error:', e);
   // Don't show alert for AbortError - it's normal when stopping
-  const audioElement = e.target as HTMLAudioElement;
+  // const audioElement = e.target as HTMLAudioElement;
+
+currentAudioRef.current.onerror = (e) => {
+  console.error('❌ Audio playback error:', e);
+  // Just log the error, don't show alert
+  setPlayingSoundId(null);
+  if (!loop) setActiveAlarm(null);
+  currentAudioRef.current = null;
+};
+
+
   if (audioElement?.error?.code !== MediaError.MEDIA_ERR_ABORTED) {
     alert('❌ Error playing audio file. The file may be corrupted or inaccessible.');
   }
@@ -1067,7 +1077,7 @@ const handlePreviewSound = () => {
       <header className={`p-6 border-b flex justify-between items-center ${
   isDarkMode ? "border-slate-700" : "border-gray-300"
 }`}>
-  <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.0</span></h1>
+  <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.1</span></h1>
   
   <button
     id="menu-button"
