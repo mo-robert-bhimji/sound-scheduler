@@ -19,7 +19,6 @@ interface ColorTheme {
   iconColor: string;
 }
 
-// Available color themes for the app
 const COLOR_SCHEMES: Record<ColorScheme, ColorTheme> = {
   ocean: {
     primary: "text-cyan-600",
@@ -78,44 +77,29 @@ const COLOR_SCHEMES: Record<ColorScheme, ColorTheme> = {
   },
 };
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
 export default function Home() {
   // ==========================================================================
   // STATE MANAGEMENT
   // ==========================================================================
   
-  // Alarm data structure: stores all scheduled alarms
   const [alarms, setAlarms] = useState<{
     id: number; 
     time: string; 
     sound: string; 
     soundId: string; 
     played: boolean;
-    customUrl?: string;        // URL to custom audio file (externally hosted)
-    days: string[];            // Days of week: MON, TUE, WED, THU, FRI, SAT, SUN
-    interruptPrevious: boolean; // If true, stops current audio and plays this
-    enabled: boolean;          // Whether this alarm is enabled
-    volume: number;            // Volume level 0-10 (0 = muted/disabled)
+    customUrl?: string;
+    days: string[];
+    interruptPrevious: boolean;
+    enabled: boolean;
+    volume: number;
   }[]>([]);
   
-  // Global toggle for all alarms
   const [allAlarmsEnabled, setAllAlarmsEnabled] = useState(true);
-  
-  // Theme state: true = dark mode, false = light mode
   const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // Selected color scheme for the app
   const [colorScheme, setColorScheme] = useState<ColorScheme>("ocean");
-
-  // Menu visibility state for hamburger menu
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // Modal state for adding/editing alarms
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Currently editing alarm (null if creating new)
   const [editingAlarm, setEditingAlarm] = useState<{
     id: number; 
     time: string; 
@@ -128,30 +112,18 @@ export default function Home() {
     volume: number;
   } | null>(null);
 
-  // Form input states for alarm creation/editing
   const [selectedHour, setSelectedHour] = useState("07");
   const [selectedMinute, setSelectedMinute] = useState("00");
   const [isPM, setIsPM] = useState(false);
   const [selectedSoundId, setSelectedSoundId] = useState("morning-chime");
   const [newAlarmSound, setNewAlarmSound] = useState("");
   const [playingSoundId, setPlayingSoundId] = useState<string | null>(null);
-
-  // Custom sound URL (externally hosted MP3/WAV)
   const [customSoundUrl, setCustomSoundUrl] = useState("");
-
-  // Day selection for alarm
+  const [customSoundType, setCustomSoundType] = useState<"url" | "file">("url");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
-
-  // Interrupt previous audio toggle
   const [interruptPrevious, setInterruptPrevious] = useState(false);
-
-  // Volume slider value (0-10)
   const [volume, setVolume] = useState(5);
-
-  // Time conflict warning message
   const [timeConflict, setTimeConflict] = useState<string | null>(null);
-
-  // Currently active/playing alarm
   const [activeAlarm, setActiveAlarm] = useState<{
     id: number; 
     time: string; 
@@ -163,25 +135,17 @@ export default function Home() {
     enabled: boolean;
     volume: number;
   } | null>(null);
-
-  // Alarms waiting to play (queued due to overlap)
   const [pendingAlarms, setPendingAlarms] = useState<typeof alarms[0][]>([]);
-
-  // Browser notification permission status
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
 
-  // ==========================================================================
-  // AUDIO REFS
-  // ==========================================================================
+  // Audio refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const oscillatorsRef = useRef<OscillatorNode[]>([]);
   const alarmIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const alarmLoopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ==========================================================================
-  // SOUND OPTIONS
-  // ==========================================================================
   const SOUND_OPTIONS = [
     { id: "morning-chime", name: "Morning Chime", type: "chime" as const },
     { id: "gentle-wake", name: "Gentle Wake", type: "gentle" as const },
@@ -189,33 +153,22 @@ export default function Home() {
     { id: "digital-beep", name: "Digital Beep", type: "beep" as const },
     { id: "soft-chime", name: "Soft Chime", type: "soft" as const },
     { id: "nature-birds", name: "Nature Birds", type: "birds" as const },
-    { id: "custom", name: "Custom Sound (URL) 🎵", type: "custom" as const },
+    { id: "custom", name: "Custom Sound 🎵", type: "custom" as const },
   ];
 
-  // Days of week in order (MON-SUN format)
   const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
-  // Demo data for testing
   const DUMMY_DATA = [
     { id: 1, time: "07:00 AM", sound: "Morning Chime", soundId: "morning-chime", played: false, days: ["MON", "TUE", "WED", "THU", "FRI"], interruptPrevious: false, enabled: true, volume: 5 },
     { id: 2, time: "08:30 AM", sound: "Gentle Wake", soundId: "gentle-wake", played: false, days: ["MON", "WED", "FRI"], interruptPrevious: false, enabled: true, volume: 7 },
     { id: 3, time: "09:00 PM", sound: "Sleep Bell", soundId: "sleep-bell", played: false, days: [], interruptPrevious: false, enabled: true, volume: 3 },
   ];
 
-  // Generate time dropdown options
   const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, "0"));
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, "0"));
 
-  // Get current color theme based on selection
   const theme = COLOR_SCHEMES[colorScheme];
 
-  // ==========================================================================
-  // HELPER FUNCTIONS
-  // ==========================================================================
-  
-  /**
-   * Get human-readable volume label
-   */
   const getVolumeLabel = (vol: number) => {
     if (vol === 0) return "Muted";
     if (vol <= 3) return "Low";
@@ -224,9 +177,6 @@ export default function Home() {
     return "Max";
   };
 
-  /**
-   * Get volume icon emoji
-   */
   const getVolumeIcon = (vol: number) => {
     if (vol === 0) return "🔇";
     if (vol <= 3) return "🔈";
@@ -234,19 +184,14 @@ export default function Home() {
     return "🔊";
   };
 
-  /**
-   * Check if creating/editing an alarm conflicts with existing alarms
-   * Returns string describing conflict or null if no conflict
-   */
   const checkTimeConflict = (time: string, days: string[], excludeId?: number) => {
     if (days.length === 0) return null;
     
     const conflicts = alarms.filter(alarm => {
-      if (excludeId && alarm.id === excludeId) return false; // Don't compare to self
+      if (excludeId && alarm.id === excludeId) return false;
       if (alarm.time !== time) return false;
-      if (alarm.days.length === 0) return false; // Inactive alarms don't conflict
+      if (alarm.days.length === 0) return false;
       
-      // Check if any days overlap
       const hasOverlap = days.some(day => alarm.days.includes(day));
       return hasOverlap;
     });
@@ -266,9 +211,6 @@ export default function Home() {
   // EFFECTS
   // ==========================================================================
 
-  /**
-   * Request notification permission on mount
-   */
   useEffect(() => {
     if ("Notification" in window) {
       setNotificationPermission(Notification.permission);
@@ -281,9 +223,6 @@ export default function Home() {
     }
   }, []);
 
-  /**
-   * Load color scheme from localStorage on mount
-   */
   useEffect(() => {
     const saved = localStorage.getItem('sound-scheduler-color-scheme');
     if (saved && Object.keys(COLOR_SCHEMES).includes(saved)) {
@@ -291,16 +230,10 @@ export default function Home() {
     }
   }, []);
 
-  /**
-   * Save color scheme to localStorage when changed
-   */
   useEffect(() => {
     localStorage.setItem('sound-scheduler-color-scheme', colorScheme);
   }, [colorScheme]);
 
-  /**
-   * Close menu when clicking outside
-   */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const menu = document.getElementById('main-menu');
@@ -317,10 +250,6 @@ export default function Home() {
     }
   }, [isMenuOpen]);
 
-  /**
-   * Reset alarm "played" status at midnight each day
-   * This ensures alarms trigger again on their next scheduled day
-   */
   useEffect(() => {
     const resetPlayedStatus = () => {
       setAlarms(prev => {
@@ -333,10 +262,8 @@ export default function Home() {
       });
     };
 
-    // Reset immediately on mount (in case app was closed overnight)
     resetPlayedStatus();
     
-    // Calculate time until midnight
     const now = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -344,15 +271,11 @@ export default function Home() {
     
     const msUntilMidnight = tomorrow.getTime() - now.getTime();
     
-    // Schedule reset at midnight
     const timeoutId = setTimeout(resetPlayedStatus, msUntilMidnight);
     
     return () => clearTimeout(timeoutId);
   }, []);
 
-  /**
-   * Check for time conflicts when editing/creating alarms
-   */
   useEffect(() => {
     if (isModalOpen && selectedHour && selectedMinute && selectedDays.length > 0) {
       const formattedTime = formatTime12Hour(selectedHour, selectedMinute, isPM);
@@ -363,46 +286,37 @@ export default function Home() {
     }
   }, [selectedHour, selectedMinute, isPM, selectedDays, editingAlarm, isModalOpen]);
 
-  /**
-   * MAIN ALARM CHECKER - Runs every second
-   * Checks if any alarms should trigger at the current time
-   */
   useEffect(() => {
     alarmIntervalRef.current = setInterval(() => {
       const now = new Date();
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();
-      const currentDay = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1]; // Convert to MON-SUN
+      const currentDay = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
       
       const currentAMPm = currentHours >= 12 ? "PM" : "AM";
       const currentHours12 = currentHours % 12 || 12;
       const currentTime12 = `${currentHours12.toString().padStart(2, "0")}:${currentMinutes.toString().padStart(2, "0")} ${currentAMPm}`;
       
-      // Find alarms that should trigger now
       const matchingAlarms = alarms.filter(alarm => {
         const timeMatches = alarm.time === currentTime12;
         const dayMatches = alarm.days.length > 0 && alarm.days.includes(currentDay);
         const notAlreadyPlayed = !alarm.played;
         const isEnabled = alarm.enabled && allAlarmsEnabled;
-        const hasVolume = alarm.volume > 0; // Volume 0 = muted/disabled
+        const hasVolume = alarm.volume > 0;
         
         return timeMatches && dayMatches && notAlreadyPlayed && isEnabled && hasVolume;
       });
 
       matchingAlarms.forEach(alarm => {
         if (activeAlarm !== null) {
-          // Something is already playing
           if (alarm.interruptPrevious) {
-            // This alarm should interrupt - stop current and play this
             triggerAlarm(alarm, true);
           } else {
-            // This alarm should wait - add to pending queue
             if (!pendingAlarms.find(p => p.id === alarm.id)) {
               setPendingAlarms(prev => [...prev, alarm]);
             }
           }
         } else {
-          // Nothing playing - trigger this alarm
           triggerAlarm(alarm, false);
         }
       });
@@ -415,9 +329,6 @@ export default function Home() {
     };
   }, [alarms, activeAlarm, pendingAlarms, allAlarmsEnabled]);
 
-  /**
-   * Play pending alarms when current alarm finishes
-   */
   useEffect(() => {
     if (activeAlarm === null && pendingAlarms.length > 0) {
       const nextAlarm = pendingAlarms[0];
@@ -427,14 +338,72 @@ export default function Home() {
   }, [activeAlarm, pendingAlarms]);
 
   // ==========================================================================
-  // ALARM TRIGGER & AUDIO FUNCTIONS
+  // FILE UPLOAD HANDLER
   // ==========================================================================
+  
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+      alert('⚠️ File is too large. Maximum size is 5MB.\n\nFor larger files, please use a URL instead.');
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setCustomSoundUrl(base64);
+    };
+    reader.onerror = () => {
+      alert('❌ Error reading file. Please try again.');
+    };
+    reader.readAsDataURL(file);
+  };
 
-  /**
-   * Trigger an alarm - plays sound and shows notification
-   * @param alarm - The alarm to trigger
-   * @param interrupting - Whether this alarm is interrupting another
-   */
+  // ==========================================================================
+  // AUDIO FUNCTIONS - IMPROVED CLEANUP
+  // ==========================================================================
+  
+  const stopAllSounds = () => {
+    console.log('🔇 Stopping all sounds...');
+    
+    oscillatorsRef.current.forEach(osc => {
+      try {
+        osc.stop();
+        osc.disconnect();
+      } catch (e) {
+        // Already stopped
+      }
+    });
+    oscillatorsRef.current = [];
+    
+    if (alarmLoopTimeoutRef.current) {
+      console.log('⏱ Clearing loop timeout');
+      clearTimeout(alarmLoopTimeoutRef.current);
+      alarmLoopTimeoutRef.current = null;
+    }
+    
+    if (currentAudioRef.current) {
+      console.log('🎵 Stopping custom audio');
+      const audio = currentAudioRef.current;
+      
+      audio.pause();
+      audio.src = '';
+      audio.load();
+      
+      audio.onended = null;
+      audio.onerror = null;
+      audio.ontimeupdate = null;
+      
+      currentAudioRef.current = null;
+      
+      console.log('✅ Custom audio stopped and cleaned up');
+    }
+    
+    setPlayingSoundId(null);
+  };
+
   const triggerAlarm = (alarm: typeof alarms[0], interrupting: boolean = false) => {
     if (interrupting) {
       stopAllSounds();
@@ -443,7 +412,7 @@ export default function Home() {
     setActiveAlarm(alarm);
     
     const customUrl = alarm.customUrl;
-    const volumeLevel = alarm.volume / 10; // Convert 0-10 to 0.0-1.0
+    const volumeLevel = alarm.volume / 10;
     
     if (alarm.soundId === "custom" && customUrl) {
       playSoundPattern("custom", alarm.interruptPrevious, customUrl, volumeLevel);
@@ -451,7 +420,6 @@ export default function Home() {
       playSoundPattern(getSoundById(alarm.soundId).type, alarm.interruptPrevious, undefined, volumeLevel);
     }
     
-    // Show browser notification
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("🔔 " + (interrupting ? "Now Playing" : "Scheduled Audio"), {
         body: `${alarm.sound} - ${alarm.time} (${getVolumeIcon(alarm.volume)} ${getVolumeLabel(alarm.volume)})`,
@@ -460,44 +428,11 @@ export default function Home() {
       });
     }
     
-    // Mark alarm as played
     setAlarms(prev => prev.map(a => 
       a.id === alarm.id ? { ...a, played: true } : a
     ));
   };
 
-  /**
-   * Stop all currently playing sounds
-   */
-  const stopAllSounds = () => {
-    // Stop all oscillators (generated tones)
-    oscillatorsRef.current.forEach(osc => {
-      try {
-        osc.stop();
-      } catch (e) {
-        // Already stopped
-      }
-    });
-    oscillatorsRef.current = [];
-    
-    // Clear any loop timeouts
-    if (alarmLoopTimeoutRef.current) {
-      clearTimeout(alarmLoopTimeoutRef.current);
-      alarmLoopTimeoutRef.current = null;
-    }
-    
-    // Stop any custom audio
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
-    }
-    
-    setPlayingSoundId(null);
-  };
-
-  /**
-   * Dismiss active alarm
-   */
   const handleDismissAlarm = () => {
     if (activeAlarm) {
       stopAllSounds();
@@ -506,9 +441,6 @@ export default function Home() {
     }
   };
 
-  /**
-   * Snooze alarm for 5 minutes
-   */
   const handleSnoozeAlarm = () => {
     if (activeAlarm) {
       stopAllSounds();
@@ -539,9 +471,6 @@ export default function Home() {
     }
   };
 
-  /**
-   * Initialize Web Audio API context
-   */
   const getAudioContext = () => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -549,14 +478,6 @@ export default function Home() {
     return audioContextRef.current;
   };
 
-  /**
-   * Play a single tone using Web Audio API
-   * @param ctx - Audio context
-   * @param frequency - Frequency in Hz
-   * @param startTime - When to start playing
-   * @param duration - How long to play
-   * @param volume - Volume level (0.0-1.0)
-   */
   const playTone = (ctx: AudioContext, frequency: number, startTime: number, duration: number, volume: number = 0.5) => {
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -577,39 +498,37 @@ export default function Home() {
     oscillatorsRef.current.push(oscillator);
   };
 
-  /**
-   * Play different sound patterns
-   * @param soundType - Type of sound to play
-   * @param loop - Whether to loop the sound
-   * @param customUrl - URL for custom audio (if soundType is "custom")
-   * @param volumeLevel - Volume level (0.0-1.0)
-   */
-  const playSoundPattern = (soundType: string, loop: boolean = false, customUrl?: string, volumeLevel: number = 0.5) => {
-    // Handle custom audio URL
-    if (soundType === "custom" && customUrl) {
-      const ctx = getAudioContext();
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-      
-      // Stop any existing audio
-      if (currentAudioRef.current) {
-        currentAudioRef.current.pause();
-      }
-      
-      // Create new audio element and play
+const playSoundPattern = (soundType: string, loop: boolean = false, customUrl?: string, volumeLevel: number = 0.5) => {
+  if (soundType === "custom" && customUrl) {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    
+    if (currentAudioRef.current) {
+      console.log('⏹ Stopping previous audio before playing new one');
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    
+    try {
       currentAudioRef.current = new Audio(customUrl);
       currentAudioRef.current.volume = volumeLevel;
-      
-      currentAudioRef.current.play().catch(err => {
-        console.error("Error playing custom sound:", err);
-        alert("Unable to play custom sound. Please check the URL or file.");
-      });
-      
       currentAudioRef.current.loop = loop;
       
-      // When audio ends naturally
+      currentAudioRef.current.onerror = (e) => {
+        console.error('❌ Audio playback error:', e);
+        // Don't show alert for AbortError - it's normal when stopping
+        if (e.target?.error?.code !== MediaError.MEDIA_ERR_ABORTED) {
+          alert('❌ Error playing audio file. The file may be corrupted or inaccessible.');
+        }
+        setPlayingSoundId(null);
+        if (!loop) setActiveAlarm(null);
+        currentAudioRef.current = null;
+      };
+      
       currentAudioRef.current.onended = () => {
+        console.log('⏹ Audio ended naturally');
         if (!loop) {
           setPlayingSoundId(null);
           setActiveAlarm(null);
@@ -617,13 +536,33 @@ export default function Home() {
         }
       };
       
+      // Play with error handling for AbortError
+      currentAudioRef.current.play().catch(err => {
+        // Ignore AbortError - it's normal when user stops playback
+        if (err.name !== 'AbortError') {
+          console.error('❌ Playback failed:', err);
+          alert('❌ Unable to play audio. Please check the file or URL.');
+        } else {
+          console.log('ℹ️ Playback was interrupted (normal)');
+        }
+        if (!loop) {
+          setPlayingSoundId(null);
+          setActiveAlarm(null);
+          currentAudioRef.current = null;
+        }
+      });
+      
       if (!loop) {
         setTimeout(() => setPlayingSoundId(null), 3000);
       }
-      return;
+    } catch (error) {
+      console.error('❌ Error creating audio element:', error);
+      alert('❌ Error loading audio file.');
     }
     
-    // Play generated tones
+    return;
+  }
+    
     const ctx = getAudioContext();
     const now = ctx.currentTime;
     
@@ -635,7 +574,6 @@ export default function Home() {
       oscillatorsRef.current = [];
     }
     
-    // Different sound patterns
     switch (soundType) {
       case 'chime':
         playTone(ctx, 523.25, now, 0.3, 0.3, volumeLevel);
@@ -732,12 +670,9 @@ export default function Home() {
   };
 
   // ==========================================================================
-  // LOCALSTORAGE FUNCTIONS
+  // LOCALSTORAGE & CLEANUP
   // ==========================================================================
 
-  /**
-   * Load alarms from localStorage on mount
-   */
   useEffect(() => {
     const saved = localStorage.getItem('sound-scheduler-alarms');
     if (saved) {
@@ -757,18 +692,12 @@ export default function Home() {
     }
   }, []);
 
-  /**
-   * Save alarms to localStorage whenever they change
-   */
   useEffect(() => {
     if (alarms.length >= 0) {
       localStorage.setItem('sound-scheduler-alarms', JSON.stringify(alarms));
     }
   }, [alarms]);
 
-  /**
-   * Cleanup on unmount
-   */
   useEffect(() => {
     return () => {
       if (alarmIntervalRef.current) {
@@ -844,13 +773,9 @@ export default function Home() {
   };
 
   // ==========================================================================
-  // EXPORT/IMPORT DATA FUNCTIONS
+  // EXPORT/IMPORT DATA
   // ==========================================================================
 
-  /**
-   * Export all data to JSON file
-   * Allows users to backup their alarms and settings
-   */
   const handleExportData = () => {
     const data = {
       alarms,
@@ -871,10 +796,6 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
-  /**
-   * Import data from JSON file
-   * Restores alarms and settings from backup
-   */
   const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -884,13 +805,11 @@ export default function Home() {
       try {
         const data = JSON.parse(e.target?.result as string);
         
-        // Validate the imported data
         if (!data.alarms || !Array.isArray(data.alarms)) {
           alert('❌ Invalid backup file format!');
           return;
         }
         
-        // Confirm import
         if (confirm(`⚠️ This will replace your current data with:\n\n📅 ${data.exportDate || 'Unknown date'}\n🔔 ${data.alarms.length} alarms\n\nContinue?`)) {
           setAlarms(data.alarms);
           if (data.colorScheme) setColorScheme(data.colorScheme);
@@ -905,12 +824,11 @@ export default function Home() {
       }
     };
     reader.readAsText(file);
-    // Reset file input
     event.target.value = '';
   };
 
   // ==========================================================================
-  // ALARM MANAGEMENT FUNCTIONS
+  // ALARM MANAGEMENT
   // ==========================================================================
 
   const handleOpenNewAlarm = () => {
@@ -921,6 +839,7 @@ export default function Home() {
     setSelectedSoundId("morning-chime");
     setNewAlarmSound("Morning Chime");
     setCustomSoundUrl("");
+    setCustomSoundType("url");
     setSelectedDays(["MON", "TUE", "WED", "THU", "FRI"]);
     setInterruptPrevious(false);
     setVolume(5);
@@ -947,6 +866,7 @@ export default function Home() {
     setSelectedSoundId(alarm.soundId);
     setNewAlarmSound(alarm.sound);
     setCustomSoundUrl(alarm.customUrl || "");
+    setCustomSoundType(alarm.customUrl && alarm.customUrl.startsWith('data:') ? "file" : "url");
     setSelectedDays(alarm.days);
     setInterruptPrevious(alarm.interruptPrevious);
     setVolume(alarm.volume);
@@ -982,36 +902,47 @@ export default function Home() {
     localStorage.setItem('sound-scheduler-alarms', JSON.stringify(updated));
   };
 
-  const handleTestSound = (soundId: string, customUrl?: string, volumeLevel: number = 0.5) => {
+const handleTestSound = (soundId: string, customUrl?: string, volumeLevel: number = 0.5) => {
+  // If already playing this sound, stop it
+  if (playingSoundId === soundId) {
     stopAllSounds();
-    
-    if (soundId === "custom" && customUrl) {
-      setPlayingSoundId(soundId);
-      playSoundPattern("custom", false, customUrl, volumeLevel);
-    } else {
-      const sound = getSoundById(soundId);
-      setPlayingSoundId(soundId);
-      playSoundPattern(sound.type, false, undefined, volumeLevel);
-    }
-  };
+    return;
+  }
+  
+  // Stop any other playing sound first
+  stopAllSounds();
+  
+  if (soundId === "custom" && customUrl) {
+    setPlayingSoundId(soundId);
+    playSoundPattern("custom", false, customUrl, volumeLevel);
+  } else {
+    const sound = getSoundById(soundId);
+    setPlayingSoundId(soundId);
+    playSoundPattern(sound.type, false, undefined, volumeLevel);
+  }
+};
 
-  const handlePreviewSound = () => {
+const handlePreviewSound = () => {
+  // If already playing, stop it
+  if (playingSoundId === selectedSoundId) {
     stopAllSounds();
-    const volumeLevel = volume / 10;
-    
-    if (selectedSoundId === "custom" && customSoundUrl) {
-      setPlayingSoundId(selectedSoundId);
-      playSoundPattern("custom", false, customSoundUrl, volumeLevel);
-    } else {
-      setPlayingSoundId(selectedSoundId);
-      playSoundPattern(getSoundById(selectedSoundId).type, false, undefined, volumeLevel);
-    }
-  };
+    return;
+  }
+  
+  // Stop any other playing sound first
+  stopAllSounds();
+  
+  const volumeLevel = volume / 10;
+  
+  if (selectedSoundId === "custom" && customSoundUrl) {
+    setPlayingSoundId(selectedSoundId);
+    playSoundPattern("custom", false, customSoundUrl, volumeLevel);
+  } else {
+    setPlayingSoundId(selectedSoundId);
+    playSoundPattern(getSoundById(selectedSoundId).type, false, undefined, volumeLevel);
+  }
+};
 
-  /**
-   * Save alarm with validation
-   * Checks if alarm time is in future to determine played status
-   */
   const handleSaveAlarm = () => {
     if (!newAlarmSound) {
       alert("Please enter a sound name!");
@@ -1020,24 +951,21 @@ export default function Home() {
 
     const formattedTime = formatTime12Hour(selectedHour, selectedMinute, isPM);
     
-    // Validate custom sound URL
     if (selectedSoundId === "custom") {
       if (!customSoundUrl) {
-        alert("Please provide a sound URL!");
+        alert("Please provide a sound URL or upload a file!");
         return;
       }
     }
 
-    // Check if alarm should be marked as played
     const shouldMarkAsPlayed = () => {
-      if (selectedDays.length === 0) return false; // Inactive alarms
+      if (selectedDays.length === 0) return false;
       
       const now = new Date();
-      const currentDayIndex = now.getDay(); // 0 = SUN, 1 = MON, etc.
-      const dayMap = [0, 1, 2, 3, 4, 5, 6]; // SUN, MON, TUE, WED, THU, FRI, SAT
+      const currentDayIndex = now.getDay();
+      const dayMap = [0, 1, 2, 3, 4, 5, 6];
       const currentDayName = DAYS[currentDayIndex === 0 ? 6 : currentDayIndex - 1];
       
-      // Check if any selected day is in the future this week
       const currentDayOrder = dayMap[currentDayIndex];
       
       for (const day of selectedDays) {
@@ -1045,17 +973,14 @@ export default function Home() {
         const dayOrder = dayMap[dayIndex === 6 ? 0 : dayIndex + 1];
         
         if (dayOrder > currentDayOrder) {
-          // This day is in the future this week
           return false;
         } else if (dayOrder === currentDayOrder) {
-          // This is today - check if time is in the future
           if (isTimeInFuture(formattedTime)) {
             return false;
           }
         }
       }
       
-      // All selected days have passed this week
       return true;
     };
 
@@ -1112,7 +1037,6 @@ export default function Home() {
     triggerAlarm(alarm, true);
   };
 
-  // Sort alarms by time
   const sortedAlarms = useMemo(() => {
     return [...alarms].sort((a, b) => {
       const timeA = timeToMinutes(a.time);
@@ -1135,13 +1059,11 @@ export default function Home() {
       isDarkMode ? "bg-slate-900 text-white" : "bg-gray-100 text-slate-900"
     }`}>
       
-      {/* Header with Hamburger Menu */}
       <header className={`p-6 border-b flex justify-between items-center ${
         isDarkMode ? "border-slate-700" : "border-gray-300"
       }`}>
         <h1 className="text-2xl font-bold">🔔 Sound Scheduler</h1>
         
-        {/* Hamburger Menu Button */}
         <button
           id="menu-button"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -1156,7 +1078,6 @@ export default function Home() {
         </button>
       </header>
 
-      {/* Dropdown Menu */}
       {isMenuOpen && (
         <div 
           id="main-menu"
@@ -1164,7 +1085,6 @@ export default function Home() {
             isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
           }`}
         >
-          {/* Dark Mode Toggle */}
           <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
             <label className="flex items-center justify-between cursor-pointer">
               <span className={`text-sm font-semibold ${isDarkMode ? "text-white" : "text-slate-900"}`}>
@@ -1187,7 +1107,6 @@ export default function Home() {
             </label>
           </div>
 
-          {/* All Enabled/Disabled */}
           <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
             <button
               onClick={() => {
@@ -1206,7 +1125,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Color Theme Picker */}
           <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
             <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
               🎨 Color Theme
@@ -1231,7 +1149,6 @@ export default function Home() {
             </select>
           </div>
 
-          {/* Reset Submenu */}
           <div className={`p-4 ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
             <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
               ⚙️ Reset Options
@@ -1300,7 +1217,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Export/Import Section */}
           <div className={`p-4 border-t ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
             <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
               💾 Backup & Restore
@@ -1329,7 +1245,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hidden file input for import */}
           <input
             type="file"
             id="import-file"
@@ -1338,7 +1253,6 @@ export default function Home() {
             className="hidden"
           />
 
-          {/* Notification Status */}
           <div className={`p-4 border-t ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
             <div className={`text-xs px-3 py-2 rounded-lg text-center ${
               notificationPermission === "granted" 
@@ -1351,7 +1265,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Alarm List */}
       <main className="p-6 pb-24">
         <h2 className={`text-lg mb-4 ${
           isDarkMode ? "text-slate-400" : "text-gray-500"
@@ -1574,7 +1487,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* Floating Action Button - Add New Alarm */}
       <button 
         onClick={handleOpenNewAlarm}
         disabled={activeAlarm !== null}
@@ -1591,7 +1503,6 @@ export default function Home() {
         </svg>
       </button>
 
-      {/* Active Alarm Overlay */}
       {activeAlarm && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className={`w-full max-w-md rounded-2xl p-8 shadow-2xl text-center ${
@@ -1620,24 +1531,25 @@ export default function Home() {
         </div>
       )}
 
-      {/* Modal - Add/Edit Alarm */}
       {isModalOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setIsModalOpen(false)}
-        >
+  		className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+  		onClick={() => {
+    			stopAllSounds(); // Stop any playing preview
+    			setIsModalOpen(false);
+  		}}
+		>
           <div 
-            className={`w-full max-w-md rounded-xl p-6 shadow-2xl transition-colors ${
-              isDarkMode ? "bg-slate-800 text-white" : "bg-white text-slate-900"
-            }`}
-            onClick={(e) => e.stopPropagation()}
-          >
+    className={`w-full max-w-md rounded-xl p-6 shadow-2xl transition-colors ${
+      isDarkMode ? "bg-slate-800 text-white" : "bg-white text-slate-900"
+    }`}
+    onClick={(e) => e.stopPropagation()}
+  >
             <h2 className="text-xl font-bold mb-4">
               {editingAlarm ? "Edit Alarm" : "Add New Alarm"}
             </h2>
             
             <div className="space-y-4">
-              {/* Time Selection */}
               <div>
                 <label className="block text-sm font-medium mb-2">Time</label>
                 <div className="flex gap-2">
@@ -1681,7 +1593,6 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* Time Conflict Warning */}
               {timeConflict && (
                 <div className={`p-3 rounded-lg border ${
                   isDarkMode ? "bg-yellow-900/30 border-yellow-600 text-yellow-400" : "bg-yellow-50 border-yellow-400 text-yellow-700"
@@ -1691,7 +1602,6 @@ export default function Home() {
                 </div>
               )}
               
-              {/* Days Selection */}
               <div>
                 <label className="block text-sm font-medium mb-2">Days</label>
                 <div className="grid grid-cols-7 gap-1">
@@ -1722,7 +1632,6 @@ export default function Home() {
                 </p>
               </div>
               
-              {/* Interrupt Previous Toggle */}
               <div className={`p-4 rounded-lg border-2 ${
                 interruptPrevious
                   ? isDarkMode ? "bg-red-900/20 border-red-600" : "bg-red-50 border-red-400"
@@ -1755,7 +1664,6 @@ export default function Home() {
                 </label>
               </div>
               
-              {/* Volume Control */}
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Volume: {volume}/10 ({getVolumeLabel(volume)}) {getVolumeIcon(volume)}
@@ -1797,7 +1705,6 @@ export default function Home() {
                 )}
               </div>
               
-              {/* Sound Selection - URL ONLY (no file upload) */}
               <div>
                 <label className="block text-sm font-medium mb-1">Sound</label>
                 <div className="flex gap-2 mb-3">
@@ -1817,69 +1724,131 @@ export default function Home() {
                     ))}
                   </select>
                   
-                  <button
-                    type="button"
-                    onClick={handlePreviewSound}
-                    disabled={playingSoundId === selectedSoundId || (selectedSoundId === "custom" && !customSoundUrl)}
-                    className={`p-3 rounded-lg transition-colors ${
-                      playingSoundId === selectedSoundId
-                        ? "bg-green-500 text-white"
-                        : isDarkMode
-                          ? "bg-slate-700 hover:bg-slate-600 text-green-400"
-                          : "bg-gray-200 hover:bg-gray-300 text-green-600"
-                    }`}
-                    title="Preview sound"
-                  >
-                    {playingSoundId === selectedSoundId ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                        <rect x="6" y="4" width="4" height="16"/>
-                        <rect x="14" y="4" width="4" height="16"/>
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    )}
-                  </button>
+<button
+  type="button"
+  onClick={handlePreviewSound}
+  disabled={selectedSoundId === "custom" && !customSoundUrl}
+  className={`p-3 rounded-lg transition-colors ${
+    playingSoundId === selectedSoundId
+      ? "bg-red-500 text-white"  // Red when playing (stop button)
+      : isDarkMode
+        ? "bg-slate-700 hover:bg-slate-600 text-green-400"
+        : "bg-gray-200 hover:bg-gray-300 text-green-600"
+  }`}
+  title={playingSoundId === selectedSoundId ? "Stop preview" : "Preview sound"}
+>
+  {playingSoundId === selectedSoundId ? (
+    // Stop icon
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+      <rect x="6" y="4" width="4" height="16"/>
+      <rect x="14" y="4" width="4" height="16"/>
+    </svg>
+  ) : (
+    // Play icon
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+  )}
+</button>
                 </div>
                 
-                {/* Custom Sound URL Input */}
                 {selectedSoundId === "custom" && (
                   <div className={`p-4 rounded-lg border-2 ${
                     isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-300"
                   }`}>
-                    <div className="mb-3">
-                      <label className="block text-sm font-medium mb-2">🔗 Sound URL (MP3/WAV)</label>
-                      <input
-                        type="url"
-                        value={customSoundUrl}
-                        onChange={(e) => setCustomSoundUrl(e.target.value)}
-                        placeholder="https://example.com/sound.mp3"
-                        className={`w-full p-3 rounded border outline-none focus:ring-2 focus:ring-cyan-500 ${
-                          isDarkMode ? "bg-slate-700 border-slate-600" : "bg-white border-gray-300"
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => setCustomSoundType("url")}
+                        className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                          customSoundType === "url"
+                            ? "bg-cyan-500 text-white"
+                            : isDarkMode
+                              ? "bg-slate-600 text-slate-300"
+                              : "bg-gray-200 text-gray-700"
                         }`}
-                      />
-                      <p className={`text-xs mt-2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
-                        💡 Tip: Upload your audio to Google Drive, Dropbox, or any file hosting service, then paste the direct link here.
-                      </p>
+                      >
+                        🔗 URL (Online)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomSoundType("file")}
+                        className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                          customSoundType === "file"
+                            ? "bg-cyan-500 text-white"
+                            : isDarkMode
+                              ? "bg-slate-600 text-slate-300"
+                              : "bg-gray-200 text-gray-700"
+                        }`}
+                      >
+                        📁 File (Local)
+                      </button>
                     </div>
                     
-                    {/* Test URL Button */}
+                    {customSoundType === "url" && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Sound URL (MP3/WAV)</label>
+                        <input
+                          type="url"
+                          value={customSoundUrl}
+                          onChange={(e) => setCustomSoundUrl(e.target.value)}
+                          placeholder="https://example.com/sound.mp3"
+                          className={`w-full p-3 rounded border outline-none focus:ring-2 focus:ring-cyan-500 ${
+                            isDarkMode ? "bg-slate-700 border-slate-600" : "bg-white border-gray-300"
+                          }`}
+                        />
+                        <p className={`text-xs mt-2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+                          💡 Tip: Upload your audio to Google Drive, Dropbox, or any file hosting service
+                        </p>
+                      </div>
+                    )}
+                    
+                    {customSoundType === "file" && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Upload Audio File (MP3/WAV)</label>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="audio/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`w-full p-3 rounded border-2 border-dashed transition-colors ${
+                            isDarkMode 
+                              ? "border-slate-600 hover:border-slate-500 text-slate-300" 
+                              : "border-gray-300 hover:border-gray-400 text-gray-700"
+                          }`}
+                        >
+                          {customSoundUrl && customSoundUrl.startsWith('data:') 
+                            ? '✅ File selected (saved in alarm)' 
+                            : '📁 Click to select file'}
+                        </button>
+                        <p className={`text-xs mt-2 ${isDarkMode ? "text-yellow-400" : "text-yellow-600"}`}>
+                          ⚠️ Files are stored in your alarm data. Max size: 5MB
+                        </p>
+                        <p className={`text-xs mt-1 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+                          💡 For larger files, use the URL option instead
+                        </p>
+                      </div>
+                    )}
+                    
                     <button
                       type="button"
                       onClick={() => {
                         if (customSoundUrl) {
-                          const audio = new Audio(customSoundUrl);
-                          audio.play().catch(() => alert('❌ Invalid URL or file not accessible'));
+                          handleTestSound("custom", customSoundUrl, volume / 10);
                         } else {
-                          alert('⚠️ Please enter a URL first');
+                          alert('⚠️ Please enter a URL or select a file first');
                         }
                       }}
-                      className={`w-full px-4 py-2 rounded-lg font-medium ${
+                      className={`w-full mt-3 px-4 py-2 rounded-lg font-medium ${
                         isDarkMode ? "bg-cyan-600 hover:bg-cyan-500" : "bg-cyan-500 hover:bg-cyan-400"
                       } text-white`}
                     >
-                      🔊 Test URL
+                      🔊 Test Sound
                     </button>
                   </div>
                 )}
