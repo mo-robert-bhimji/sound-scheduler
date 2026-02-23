@@ -202,6 +202,32 @@ export default function Home() {
     return null;
   };
 
+// Test IndexedDB connection
+useEffect(() => {
+  const testIndexedDB = async () => {
+    try {
+      const { isIndexedDBSupported, getStorageEstimate } = await import('./lib/db');
+      
+      if (isIndexedDBSupported()) {
+        console.log('✅ IndexedDB is supported!');
+        
+        const estimate = await getStorageEstimate();
+        console.log('💾 Storage estimate:', {
+          usage: `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`,
+          quota: `${(estimate.quota / 1024 / 1024).toFixed(2)} MB`,
+          percentUsed: `${estimate.percentUsed.toFixed(1)}%`,
+        });
+      } else {
+        console.error('❌ IndexedDB is NOT supported in this browser');
+      }
+    } catch (error) {
+      console.error('❌ Error testing IndexedDB:', error);
+    }
+  };
+  
+  testIndexedDB();
+}, []);
+
   useEffect(() => {
     if ("Notification" in window) {
       setNotificationPermission(Notification.permission);
