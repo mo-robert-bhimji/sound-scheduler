@@ -903,13 +903,17 @@ const playSoundPattern = (soundType: string, loop: boolean = false, customUrl?: 
   };
 
 const handleTestSound = (soundId: string, customUrl?: string, volumeLevel: number = 0.5) => {
-  // If already playing this sound, stop it
+  console.log('🔊 handleTestSound called:', soundId, 'Currently playing:', playingSoundId);
+  
+  // If this exact sound is already playing, stop it
   if (playingSoundId === soundId) {
+    console.log('⏹ Stopping sound');
     stopAllSounds();
     return;
   }
   
   // Stop any other playing sound first
+  console.log('⏹ Stopping other sounds and starting new one');
   stopAllSounds();
   
   if (soundId === "custom" && customUrl) {
@@ -1412,34 +1416,35 @@ const handlePreviewSound = () => {
                       )}
                     </button>
                     
-                    <button 
-                      onClick={() => handleTestSound(alarm.soundId, customUrl, alarm.volume / 10)}
-                      disabled={!canTrigger || isPlaying || activeAlarm !== null}
-                      className={`p-2 rounded-full transition-colors ${
-                        isPlaying
-                          ? "bg-green-500 text-white animate-pulse"
-                          : !canTrigger
-                            ? isDarkMode 
-                              ? "text-slate-600 cursor-not-allowed" 
-                              : "text-gray-300 cursor-not-allowed"
-                            : isDarkMode 
-                              ? "text-green-400 hover:bg-slate-700" 
-                              : "text-green-600 hover:bg-gray-100"
-                      }`}
-                      title={!canTrigger ? (isMuted ? "Muted (volume = 0)" : "Disabled alarm") : isPlaying ? "Playing..." : "Test sound"}
-                    >
-                      {isPlaying ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                          <rect x="6" y="4" width="4" height="16"/>
-                          <rect x="14" y="4" width="4" height="16"/>
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      )}
-                    </button>
-                    
+<button 
+  onClick={() => handleTestSound(alarm.soundId, customUrl, alarm.volume / 10)}
+  disabled={!canTrigger || activeAlarm !== null}
+  className={`p-2 rounded-full transition-colors ${
+    isPlaying
+      ? "bg-red-500 text-white animate-pulse"  // Red when playing (stop button)
+      : !canTrigger
+        ? isDarkMode 
+          ? "text-slate-600 cursor-not-allowed" 
+          : "text-gray-300 cursor-not-allowed"
+        : isDarkMode 
+          ? "text-green-400 hover:bg-slate-700" 
+          : "text-green-600 hover:bg-gray-100"
+  }`}
+  title={isPlaying ? "Stop sound" : !canTrigger ? (isMuted ? "Muted (volume = 0)" : "Disabled alarm") : "Test sound"}
+>
+  {isPlaying ? (
+    // Stop icon (two vertical bars)
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+      <rect x="6" y="4" width="4" height="16"/>
+      <rect x="14" y="4" width="4" height="16"/>
+    </svg>
+  ) : (
+    // Play icon (triangle)
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+  )}
+</button>                    
                     {isPending && (
                       <button 
                         onClick={() => handlePlayPendingAlarm(alarm)}
