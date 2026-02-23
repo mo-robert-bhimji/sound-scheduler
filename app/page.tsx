@@ -553,9 +553,9 @@ export default function Home() {
     
     switch (soundType) {
       case 'chime':
-        playTone(ctx, 523.25, now, 0.3, 0.3, volumeLevel);
-        playTone(ctx, 659.25, now + 0.1, 0.3, 0.3, volumeLevel);
-        playTone(ctx, 783.99, now + 0.2, 0.4, 0.3, volumeLevel);
+        playTone(ctx, 523.25, now, 0.3, volumeLevel);
+        playTone(ctx, 659.25, now + 0.1, 0.3, volumeLevel);
+        playTone(ctx, 783.99, now + 0.2, 0.4, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 1500);
         } else {
@@ -567,9 +567,9 @@ export default function Home() {
         break;
         
       case 'gentle':
-        playTone(ctx, 440.00, now, 0.5, 0.2, volumeLevel);
-        playTone(ctx, 554.37, now + 0.3, 0.5, 0.2, volumeLevel);
-        playTone(ctx, 659.25, now + 0.6, 0.6, 0.2, volumeLevel);
+        playTone(ctx, 440.00, now, 0.5, volumeLevel);
+        playTone(ctx, 554.37, now + 0.3, 0.5, volumeLevel);
+        playTone(ctx, 659.25, now + 0.6, 0.6, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 2000);
         } else {
@@ -581,8 +581,8 @@ export default function Home() {
         break;
         
       case 'bell':
-        playTone(ctx, 523.25, now, 1.0, 0.4, volumeLevel);
-        playTone(ctx, 523.25, now + 0.1, 1.0, 0.3, volumeLevel);
+        playTone(ctx, 523.25, now, 1.0, volumeLevel);
+        playTone(ctx, 523.25, now + 0.1, 1.0, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 2000);
         } else {
@@ -594,9 +594,9 @@ export default function Home() {
         break;
         
       case 'beep':
-        playTone(ctx, 880.00, now, 0.1, 0.3, volumeLevel);
-        playTone(ctx, 880.00, now + 0.15, 0.1, 0.3, volumeLevel);
-        playTone(ctx, 880.00, now + 0.3, 0.1, 0.3, volumeLevel);
+        playTone(ctx, 880.00, now, 0.1, volumeLevel);
+        playTone(ctx, 880.00, now + 0.15, 0.1, volumeLevel);
+        playTone(ctx, 880.00, now + 0.3, 0.1, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 1000);
         } else {
@@ -608,9 +608,9 @@ export default function Home() {
         break;
         
       case 'soft':
-        playTone(ctx, 659.25, now, 0.4, 0.25, volumeLevel);
-        playTone(ctx, 587.33, now + 0.2, 0.4, 0.25, volumeLevel);
-        playTone(ctx, 523.25, now + 0.4, 0.5, 0.25, volumeLevel);
+        playTone(ctx, 659.25, now, 0.4, volumeLevel);
+        playTone(ctx, 587.33, now + 0.2, 0.4, volumeLevel);
+        playTone(ctx, 523.25, now + 0.4, 0.5, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 1800);
         } else {
@@ -622,11 +622,11 @@ export default function Home() {
         break;
         
       case 'birds':
-        playTone(ctx, 2000, now, 0.1, 0.15, volumeLevel);
-        playTone(ctx, 2500, now + 0.15, 0.08, 0.1, volumeLevel);
-        playTone(ctx, 1800, now + 0.3, 0.12, 0.15, volumeLevel);
-        playTone(ctx, 2200, now + 0.5, 0.1, 0.1, volumeLevel);
-        playTone(ctx, 2000, now + 0.7, 0.1, 0.15, volumeLevel);
+        playTone(ctx, 2000, now, 0.1, volumeLevel);
+        playTone(ctx, 2500, now + 0.15, 0.08, olumeLevel);
+        playTone(ctx, 1800, now + 0.3, 0.12, volumeLevel);
+        playTone(ctx, 2200, now + 0.5, 0.1, volumeLevel);
+        playTone(ctx, 2000, now + 0.7, 0.1, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 2000);
         } else {
@@ -638,7 +638,7 @@ export default function Home() {
         break;
         
       default:
-        playTone(ctx, 440, now, 0.3, 0.3, volumeLevel);
+        playTone(ctx, 440, now, 0.3, volumeLevel);
         setTimeout(() => {
           setPlayingSoundId(null);
           setActiveAlarm(null);
