@@ -623,7 +623,7 @@ export default function Home() {
         
       case 'birds':
         playTone(ctx, 2000, now, 0.1, volumeLevel);
-        playTone(ctx, 2500, now + 0.15, 0.08, olumeLevel);
+        playTone(ctx, 2500, now + 0.15, 0.08, volumeLevel);
         playTone(ctx, 1800, now + 0.3, 0.12, volumeLevel);
         playTone(ctx, 2200, now + 0.5, 0.1, volumeLevel);
         playTone(ctx, 2000, now + 0.7, 0.1, volumeLevel);
@@ -747,7 +747,7 @@ export default function Home() {
       colorScheme,
       allAlarmsEnabled,
       exportDate: new Date().toISOString(),
-      version: '1.1.11'
+      version: '1.1.13'
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
