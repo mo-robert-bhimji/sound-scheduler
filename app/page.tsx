@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Analytics } from "@vercel/analytics/react";
 
 // Color schemes
 type ColorScheme = "ocean" | "forest" | "violet" | "sunset" | "slate";
@@ -116,6 +115,7 @@ export default function Home() {
   const [playingSoundId, setPlayingSoundId] = useState<string | null>(null);
   const [customSoundUrl, setCustomSoundUrl] = useState("");
   const [customSoundType, setCustomSoundType] = useState<"url" | "file">("url");
+  const [customFileName, setCustomFileName] = useState("");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [interruptPrevious, setInterruptPrevious] = useState(false);
   const [volume, setVolume] = useState(5);
@@ -148,7 +148,7 @@ export default function Home() {
     { id: "digital-beep", name: "Digital Beep", type: "beep" as const },
     { id: "soft-chime", name: "Soft Chime", type: "soft" as const },
     { id: "nature-birds", name: "Nature Birds", type: "birds" as const },
-    { id: "custom", name: "Custom Sound 🎵", type: "custom" as const },
+    { id: "custom", name: "🎵 Custom Sound", type: "custom" as const },
   ];
 
   const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -201,32 +201,6 @@ export default function Home() {
     
     return null;
   };
-
-// Test IndexedDB connection
-useEffect(() => {
-  const testIndexedDB = async () => {
-    try {
-      const { isIndexedDBSupported, getStorageEstimate } = await import('./lib/db');
-      
-      if (isIndexedDBSupported()) {
-        console.log('✅ IndexedDB is supported!');
-        
-        const estimate = await getStorageEstimate();
-        console.log('💾 Storage estimate:', {
-          usage: `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`,
-          quota: `${(estimate.quota / 1024 / 1024).toFixed(2)} MB`,
-          percentUsed: `${estimate.percentUsed.toFixed(1)}%`,
-        });
-      } else {
-        console.error('❌ IndexedDB is NOT supported in this browser');
-      }
-    } catch (error) {
-      console.error('❌ Error testing IndexedDB:', error);
-    }
-  };
-  
-  testIndexedDB();
-}, []);
 
   useEffect(() => {
     if ("Notification" in window) {
@@ -293,6 +267,32 @@ useEffect(() => {
     return () => clearTimeout(timeoutId);
   }, []);
 
+  // Test IndexedDB connection
+  useEffect(() => {
+    const testIndexedDB = async () => {
+      try {
+        const { isIndexedDBSupported, getStorageEstimate } = await import('./lib/db');
+        
+        if (isIndexedDBSupported()) {
+          console.log('✅ IndexedDB is supported!');
+          
+          const estimate = await getStorageEstimate();
+          console.log('💾 Storage estimate:', {
+            usage: `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`,
+            quota: `${(estimate.quota / 1024 / 1024).toFixed(2)} MB`,
+            percentUsed: `${estimate.percentUsed.toFixed(1)}%`,
+          });
+        } else {
+          console.error('❌ IndexedDB is NOT supported in this browser');
+        }
+      } catch (error) {
+        console.error('❌ Error testing IndexedDB:', error);
+      }
+    };
+    
+    testIndexedDB();
+  }, []);
+
   useEffect(() => {
     if (isModalOpen && selectedHour && selectedMinute && selectedDays.length > 0) {
       const formattedTime = formatTime12Hour(selectedHour, selectedMinute, isPM);
@@ -354,24 +354,47 @@ useEffect(() => {
     }
   }, [activeAlarm, pendingAlarms]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // UPDATED: File upload now saves to IndexedDB
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    if (file.size > 5 * 1024 * 1024) {
-      alert('⚠️ File is too large. Maximum size is 5MB.\n\nFor larger files, please use a URL instead.');
+    // Check file size (limit to 10MB for IndexedDB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('⚠️ File is too large. Maximum size is 10MB.');
       return;
     }
     
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      setCustomSoundUrl(base64);
-    };
-    reader.onerror = () => {
-      alert('❌ Error reading file. Please try again.');
-    };
-    reader.readAsDataURL(file);
+    // Check file type
+    if (!file.type.startsWith('audio/')) {
+      alert('⚠️ Please select a valid audio file (MP3, WAV, etc.)');
+      return;
+    }
+    
+    try {
+      console.log('📁 Uploading file:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      
+      // Generate unique ID for this sound
+      const soundId = `sound_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Save to IndexedDB
+      const { saveSound } = await import('./lib/db');
+      await saveSound(soundId, file, file.name);
+      
+      // Store the ID (not the file data!)
+      setCustomSoundUrl(soundId);
+      setCustomFileName(file.name);
+      
+      console.log('✅ File uploaded and saved to IndexedDB:', soundId);
+      alert(`✅ File uploaded successfully!\n\nName: ${file.name}\nSize: ${(file.size / 1024 / 1024).toFixed(2)} MB\nID: ${soundId}`);
+      
+    } catch (error) {
+      console.error('❌ Error uploading file:', error);
+      alert('❌ Error uploading file. Please try again.');
+    }
+    
+    // Reset file input
+    event.target.value = '';
   };
 
   const stopAllSounds = () => {
@@ -507,7 +530,7 @@ useEffect(() => {
     oscillatorsRef.current.push(oscillator);
   };
 
-  const playSoundPattern = (soundType: string, loop: boolean = false, customUrl?: string, volumeLevel: number = 0.5) => {
+  const playSoundPattern = async (soundType: string, loop: boolean = false, customUrl?: string, volumeLevel: number = 0.5) => {
     if (soundType === "custom" && customUrl) {
       const ctx = getAudioContext();
       if (ctx.state === 'suspended') {
@@ -521,7 +544,23 @@ useEffect(() => {
       }
       
       try {
-        const audio = new Audio(customUrl);
+        let audioUrl = customUrl;
+        
+        // Check if it's a sound ID (IndexedDB)
+        if (customUrl.startsWith('sound_')) {
+          console.log('📥 Fetching sound from IndexedDB:', customUrl);
+          const { getSound } = await import('./lib/db');
+          const sound = await getSound(customUrl);
+          
+          if (sound) {
+            audioUrl = URL.createObjectURL(sound.data);
+            console.log('✅ Sound loaded from IndexedDB');
+          } else {
+            throw new Error('Sound not found in IndexedDB');
+          }
+        }
+        
+        const audio = new Audio(audioUrl);
         currentAudioRef.current = audio;
         audio.volume = volumeLevel;
         audio.loop = loop;
@@ -580,9 +619,9 @@ useEffect(() => {
     
     switch (soundType) {
       case 'chime':
-        playTone(ctx, 523.25, now, 0.3, volumeLevel);
-        playTone(ctx, 659.25, now + 0.1, 0.3, volumeLevel);
-        playTone(ctx, 783.99, now + 0.2, 0.4, volumeLevel);
+        playTone(ctx, 523.25, now, 0.3, 0.3, volumeLevel);
+        playTone(ctx, 659.25, now + 0.1, 0.3, 0.3, volumeLevel);
+        playTone(ctx, 783.99, now + 0.2, 0.4, 0.3, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 1500);
         } else {
@@ -594,9 +633,9 @@ useEffect(() => {
         break;
         
       case 'gentle':
-        playTone(ctx, 440.00, now, 0.5, volumeLevel);
-        playTone(ctx, 554.37, now + 0.3, 0.5, volumeLevel);
-        playTone(ctx, 659.25, now + 0.6, 0.6, volumeLevel);
+        playTone(ctx, 440.00, now, 0.5, 0.2, volumeLevel);
+        playTone(ctx, 554.37, now + 0.3, 0.5, 0.2, volumeLevel);
+        playTone(ctx, 659.25, now + 0.6, 0.6, 0.2, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 2000);
         } else {
@@ -608,8 +647,8 @@ useEffect(() => {
         break;
         
       case 'bell':
-        playTone(ctx, 523.25, now, 1.0, volumeLevel);
-        playTone(ctx, 523.25, now + 0.1, 1.0, volumeLevel);
+        playTone(ctx, 523.25, now, 1.0, 0.4, volumeLevel);
+        playTone(ctx, 523.25, now + 0.1, 1.0, 0.3, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 2000);
         } else {
@@ -621,9 +660,9 @@ useEffect(() => {
         break;
         
       case 'beep':
-        playTone(ctx, 880.00, now, 0.1, volumeLevel);
-        playTone(ctx, 880.00, now + 0.15, 0.1, volumeLevel);
-        playTone(ctx, 880.00, now + 0.3, 0.1, volumeLevel);
+        playTone(ctx, 880.00, now, 0.1, 0.3, volumeLevel);
+        playTone(ctx, 880.00, now + 0.15, 0.1, 0.3, volumeLevel);
+        playTone(ctx, 880.00, now + 0.3, 0.1, 0.3, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 1000);
         } else {
@@ -635,9 +674,9 @@ useEffect(() => {
         break;
         
       case 'soft':
-        playTone(ctx, 659.25, now, 0.4, volumeLevel);
-        playTone(ctx, 587.33, now + 0.2, 0.4, volumeLevel);
-        playTone(ctx, 523.25, now + 0.4, 0.5, volumeLevel);
+        playTone(ctx, 659.25, now, 0.4, 0.25, volumeLevel);
+        playTone(ctx, 587.33, now + 0.2, 0.4, 0.25, volumeLevel);
+        playTone(ctx, 523.25, now + 0.4, 0.5, 0.25, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 1800);
         } else {
@@ -649,11 +688,11 @@ useEffect(() => {
         break;
         
       case 'birds':
-        playTone(ctx, 2000, now, 0.1, volumeLevel);
-        playTone(ctx, 2500, now + 0.15, 0.08, volumeLevel);
-        playTone(ctx, 1800, now + 0.3, 0.12, volumeLevel);
-        playTone(ctx, 2200, now + 0.5, 0.1, volumeLevel);
-        playTone(ctx, 2000, now + 0.7, 0.1, volumeLevel);
+        playTone(ctx, 2000, now, 0.1, 0.15, volumeLevel);
+        playTone(ctx, 2500, now + 0.15, 0.08, 0.1, volumeLevel);
+        playTone(ctx, 1800, now + 0.3, 0.12, 0.15, volumeLevel);
+        playTone(ctx, 2200, now + 0.5, 0.1, 0.1, volumeLevel);
+        playTone(ctx, 2000, now + 0.7, 0.1, 0.15, volumeLevel);
         if (loop) {
           alarmLoopTimeoutRef.current = setTimeout(() => playSoundPattern(soundType, true, undefined, volumeLevel), 2000);
         } else {
@@ -665,7 +704,7 @@ useEffect(() => {
         break;
         
       default:
-        playTone(ctx, 440, now, 0.3, volumeLevel);
+        playTone(ctx, 440, now, 0.3, 0.3, volumeLevel);
         setTimeout(() => {
           setPlayingSoundId(null);
           setActiveAlarm(null);
@@ -774,7 +813,7 @@ useEffect(() => {
       colorScheme,
       allAlarmsEnabled,
       exportDate: new Date().toISOString(),
-      version: '1.1.14'
+      version: '1.1.16'
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -828,6 +867,7 @@ useEffect(() => {
     setNewAlarmSound("Morning Chime");
     setCustomSoundUrl("");
     setCustomSoundType("url");
+    setCustomFileName("");
     setSelectedDays(["MON", "TUE", "WED", "THU", "FRI"]);
     setInterruptPrevious(false);
     setVolume(5);
@@ -854,12 +894,66 @@ useEffect(() => {
     setSelectedSoundId(alarm.soundId);
     setNewAlarmSound(alarm.sound);
     setCustomSoundUrl(alarm.customUrl || "");
-    setCustomSoundType(alarm.customUrl && alarm.customUrl.startsWith('data:') ? "file" : "url");
+    // Check if it's a sound ID (IndexedDB) or URL
+    const isSoundId = alarm.customUrl && alarm.customUrl.startsWith('sound_');
+    setCustomSoundType(isSoundId ? "file" : "url");
+    setCustomFileName("");
     setSelectedDays(alarm.days);
     setInterruptPrevious(alarm.interruptPrevious);
     setVolume(alarm.volume);
     setTimeConflict(null);
     setIsModalOpen(true);
+  };
+
+  // NEW: Clone alarm function
+  const handleCloneAlarm = (alarm: typeof alarms[0]) => {
+    console.log('📋 Cloning alarm:', alarm.id, alarm.time, alarm.sound);
+    
+    // Create a copy with new ID
+    const clonedAlarm = {
+      ...alarm,
+      id: Date.now(), // New unique ID
+      played: false, // Reset played status
+      enabled: true, // Ensure it's enabled
+    };
+    
+    // Add to alarms array
+    const updated = [...alarms, clonedAlarm];
+    setAlarms(updated);
+    localStorage.setItem('sound-scheduler-alarms', JSON.stringify(updated));
+    
+    console.log('✅ Alarm cloned successfully:', clonedAlarm.id);
+    
+    // Open edit modal for the cloned alarm
+    const { hour, minute, isPM } = parseTime12Hour(clonedAlarm.time);
+    setEditingAlarm({
+      id: clonedAlarm.id,
+      time: clonedAlarm.time,
+      sound: clonedAlarm.sound,
+      soundId: clonedAlarm.soundId,
+      customUrl: clonedAlarm.customUrl,
+      days: clonedAlarm.days,
+      interruptPrevious: clonedAlarm.interruptPrevious,
+      enabled: clonedAlarm.enabled,
+      volume: clonedAlarm.volume,
+    });
+    setSelectedHour(hour);
+    setSelectedMinute(minute);
+    setIsPM(isPM);
+    setSelectedSoundId(clonedAlarm.soundId);
+    setNewAlarmSound(clonedAlarm.sound);
+    setCustomSoundUrl(clonedAlarm.customUrl || "");
+    // Check if it's a sound ID (IndexedDB) or URL
+    const isSoundId = clonedAlarm.customUrl && clonedAlarm.customUrl.startsWith('sound_');
+    setCustomSoundType(isSoundId ? "file" : "url");
+    setCustomFileName("");
+    setSelectedDays(clonedAlarm.days);
+    setInterruptPrevious(clonedAlarm.interruptPrevious);
+    setVolume(clonedAlarm.volume);
+    setTimeConflict(null);
+    setIsModalOpen(true);
+    
+    alert(`✅ Alarm cloned!\n\n"${clonedAlarm.sound}" at ${clonedAlarm.time}\n\nEdit the duplicate or click Cancel to keep as-is.`);
   };
 
   const handleDeleteAlarm = (id: number) => {
@@ -976,45 +1070,47 @@ useEffect(() => {
       return true;
     };
 
-if (editingAlarm) {
-  // When editing an alarm, always reset played status to false
-  // This gives the user a fresh start after making changes
-  const updated = alarms.map(alarm => 
-    alarm.id === editingAlarm.id 
-      ? { 
-          ...alarm, 
-          time: formattedTime, 
-          sound: newAlarmSound, 
-          soundId: selectedSoundId,
-          played: false,  // ✅ Always reset when editing
-          days: selectedDays,
-          interruptPrevious: interruptPrevious,
-          enabled: editingAlarm.enabled,
-          volume: volume,
-          customUrl: selectedSoundId === "custom" ? customSoundUrl : undefined,
-        }
-      : alarm
-  );
-  setAlarms([...updated]);
-} else {
-  // New alarm - starts with played: false
-  const newAlarm = {
-    id: Date.now(),
-    time: formattedTime,
-    sound: newAlarmSound,
-    soundId: selectedSoundId,
-    played: false,
-    days: selectedDays,
-    interruptPrevious: interruptPrevious,
-    enabled: true,
-    volume: volume,
-    customUrl: selectedSoundId === "custom" ? customSoundUrl : undefined,
-  };
-  const updated = [...alarms, newAlarm];
-  setAlarms(updated);
-}
+    if (editingAlarm) {
+      // When editing an alarm, always reset played status to false
+      const played = false;
+      
+      const updated = alarms.map(alarm => 
+        alarm.id === editingAlarm.id 
+          ? { 
+              ...alarm, 
+              time: formattedTime, 
+              sound: newAlarmSound, 
+              soundId: selectedSoundId,
+              played: played,
+              days: selectedDays,
+              interruptPrevious: interruptPrevious,
+              enabled: editingAlarm.enabled,
+              volume: volume,
+              customUrl: selectedSoundId === "custom" ? customSoundUrl : undefined,
+            }
+          : alarm
+      );
+      setAlarms([...updated]);
+    } else {
+      const newAlarm = {
+        id: Date.now(),
+        time: formattedTime,
+        sound: newAlarmSound,
+        soundId: selectedSoundId,
+        played: false,
+        days: selectedDays,
+        interruptPrevious: interruptPrevious,
+        enabled: true,
+        volume: volume,
+        customUrl: selectedSoundId === "custom" ? customSoundUrl : undefined,
+      };
+      const updated = [...alarms, newAlarm];
+      setAlarms(updated);
+    }
+
     setNewAlarmSound("");
     setCustomSoundUrl("");
+    setCustomFileName("");
     setSelectedDays([]);
     setInterruptPrevious(false);
     setVolume(5);
@@ -1051,7 +1147,7 @@ if (editingAlarm) {
       <header className={`p-6 border-b flex justify-between items-center ${
         isDarkMode ? "border-slate-700" : "border-gray-300"
       }`}>
-        <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.14</span></h1>
+        <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.16</span></h1>
         
         <button
           id="menu-button"
@@ -1429,21 +1525,25 @@ if (editingAlarm) {
                       )}
                     </button>
                     
-                    {isPending && (
-                      <button 
-                        onClick={() => handlePlayPendingAlarm(alarm)}
-                        className={`p-2 rounded-full transition-colors ${
-                          isDarkMode 
-                            ? "bg-yellow-500 hover:bg-yellow-400 text-white" 
-                            : "bg-yellow-400 hover:bg-yellow-300 text-yellow-900"
-                        }`}
-                        title="Play now"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </button>
-                    )}
+                    {/* Clone Button - NEW */}
+                    <button 
+                      onClick={() => handleCloneAlarm(alarm)}
+                      disabled={!canTrigger}
+                      className={`p-2 hover:opacity-70 transition-colors ${
+                        !canTrigger
+                          ? isDarkMode 
+                            ? "text-slate-600 cursor-not-allowed" 
+                            : "text-gray-300 cursor-not-allowed"
+                          : isDarkMode 
+                            ? "text-purple-400 hover:bg-slate-700" 
+                            : "text-purple-600 hover:bg-gray-100"
+                      }`}
+                      title="Duplicate this alarm"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
                     
                     <button 
                       onClick={() => handleOpenEditAlarm(alarm)}
@@ -1809,12 +1909,10 @@ if (editingAlarm) {
                               : "border-gray-300 hover:border-gray-400 text-gray-700"
                           }`}
                         >
-                          {customSoundUrl && customSoundUrl.startsWith('data:') 
-                            ? '✅ File selected (saved in alarm)' 
-                            : '📁 Click to select file'}
+                          {customFileName || (customSoundUrl.startsWith('sound_') ? '✅ File saved in IndexedDB' : '📁 Click to select file')}
                         </button>
                         <p className={`text-xs mt-2 ${isDarkMode ? "text-yellow-400" : "text-yellow-600"}`}>
-                          ⚠️ Files are stored in your alarm data. Max size: 5MB
+                          ⚠️ Files are stored in IndexedDB (up to 10MB)
                         </p>
                         <p className={`text-xs mt-1 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
                           💡 For larger files, use the URL option instead
