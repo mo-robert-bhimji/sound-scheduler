@@ -427,6 +427,62 @@ export default function Home() {
     setPlayingSoundId(null);
   };
 
+// --- EXPORT DATA ---
+const handleExportData = () => {
+  const data = {
+    alarms,
+    colorScheme,
+    allAlarmsEnabled,
+    exportDate: new Date().toISOString(),
+    version: '1.0'
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sound-scheduler-backup-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// --- IMPORT DATA ---
+const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target?.result as string);
+      
+      // Validate the imported data
+      if (!data.alarms || !Array.isArray(data.alarms)) {
+        alert('❌ Invalid backup file format!');
+        return;
+      }
+      
+      // Confirm import
+      if (confirm(`⚠️ This will replace your current data with:\n\n📅 ${data.exportDate || 'Unknown date'}\n🔔 ${data.alarms.length} alarms\n\nContinue?`)) {
+        setAlarms(data.alarms);
+        if (data.colorScheme) setColorScheme(data.colorScheme);
+        if (data.allAlarmsEnabled !== undefined) setAllAlarmsEnabled(data.allAlarmsEnabled);
+        localStorage.setItem('sound-scheduler-alarms', JSON.stringify(data.alarms));
+        alert('✅ Data imported successfully!');
+        setIsMenuOpen(false);
+      }
+    } catch (error) {
+      alert('❌ Error reading backup file. Make sure it\'s a valid JSON file.');
+      console.error(error);
+    }
+  };
+  reader.readAsText(file);
+  // Reset file input
+  event.target.value = '';
+};
+
   const handleDismissAlarm = () => {
     if (activeAlarm) {
       stopAllSounds();
@@ -1104,6 +1160,39 @@ const handleSaveAlarm = () => {
               >
                 🔄 Restart App
               </button>
+
+
+{/* Export/Import Section */}
+<div className={`p-4 border-t ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+  <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+    💾 Backup & Restore
+  </label>
+  <div className="space-y-2">
+    <button
+      onClick={handleExportData}
+      className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+        isDarkMode 
+          ? "bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400" 
+          : "bg-cyan-100 hover:bg-cyan-200 text-cyan-600"
+      }`}
+    >
+      📤 Export Data
+    </button>
+    <button
+      onClick={() => document.getElementById('import-file')?.click()}
+      className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+        isDarkMode 
+          ? "bg-purple-600/20 hover:bg-purple-600/30 text-purple-400" 
+          : "bg-purple-100 hover:bg-purple-200 text-purple-600"
+      }`}
+    >
+      📥 Import Data
+    </button>
+  </div>
+</div>
+
+
+
               <button
   onClick={() => {
     setTimeout(() => {
@@ -1122,6 +1211,8 @@ const handleSaveAlarm = () => {
 >
   🗑️ Delete All Alarms
 </button>
+
+
             </div>
           </div>
 
@@ -1137,6 +1228,15 @@ const handleSaveAlarm = () => {
           </div>
         </div>
       )}
+
+{/* Hidden file input for import */}
+<input
+  type="file"
+  id="import-file"
+  accept=".json"
+  onChange={handleImportData}
+  className="hidden"
+/>
 
       {/* Alarm List */}
       <main className="p-6 pb-24">
