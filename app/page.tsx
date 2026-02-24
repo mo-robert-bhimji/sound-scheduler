@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 
+import { Analytics } from "@vercel/analytics/next"
+
 // ============================================================================
 // APP CONFIGURATION - Update version here only!
 // ============================================================================
@@ -1106,6 +1108,55 @@ const handleDeleteAlarm = async (id: number) => {
     localStorage.setItem('sound-scheduler-alarms', JSON.stringify(updated));
   }
 };
+
+const handleClearAllSounds = async () => {
+  try {
+    const confirmed = confirm(
+      '⚠️ Clear All Custom Sounds?\n\n' +
+      'This will delete ALL custom sound files from storage.\n\n' +
+      '⚠️ Alarms with custom sounds will no longer play!\n\n' +
+      'This cannot be undone.\n\n' +
+      'Continue?'
+    );
+    
+    if (!confirmed) return;
+    
+    console.log('🧹 Clearing all custom sounds...');
+    const { clearAllSounds } = await import('./lib/db');
+    await clearAllSounds();
+    
+    // Remove custom sound references from alarms
+    const updated = alarms.map(alarm => {
+      if (alarm.soundId === 'custom' && alarm.customUrl?.startsWith('sound_')) {
+        return {
+          ...alarm,
+          customUrl: undefined,
+          sound: 'Morning Chime', // Reset to default
+          soundId: 'morning-chime',
+        };
+      }
+      return alarm;
+    });
+    
+    setAlarms(updated);
+    localStorage.setItem('sound-scheduler-alarms', JSON.stringify(updated));
+    
+    // Refresh storage info
+    const { getStorageEstimate } = await import('./lib/db');
+    const estimate = await getStorageEstimate();
+    setStorageUsage({
+      usage: estimate.usage,
+      quota: estimate.quota,
+      percentUsed: estimate.percentUsed,
+    });
+    
+    alert('✅ All custom sounds cleared!\n\nStorage freed up.\nAlarms reset to default sounds.');
+    
+  } catch (error) {
+    console.error('❌ Error clearing sounds:', error);
+    alert('❌ Error clearing sounds. See console for details.');
+  }
+};
   const handleResetToDemo = () => {
     if (confirm("Reset to demo alarms? This will delete all current alarms.")) {
       setAlarms(DUMMY_DATA);
@@ -1597,7 +1648,7 @@ const handleDeleteAlarm = async (id: number) => {
               </button>
               <button
   onClick={() => document.getElementById('import-file')?.click()}
-  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left mb-3 ${
+  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
     isDarkMode 
       ? "bg-purple-600/20 hover:bg-purple-600/30 text-purple-400" 
       : "bg-purple-100 hover:bg-purple-200 text-purple-600"
@@ -1624,6 +1675,21 @@ const handleDeleteAlarm = async (id: number) => {
 >
   🔄 Refresh Storage Info
 </button>
+
+<button
+  onClick={handleClearAllSounds}
+  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+    isDarkMode 
+      ? "bg-red-600/20 hover:bg-red-600/30 text-red-400" 
+      : "bg-red-100 hover:bg-red-200 text-red-600"
+  }`}
+>
+  🗑️ Clear All Sounds
+
+
+</button>
+
+
               
             </div>
           </div>
