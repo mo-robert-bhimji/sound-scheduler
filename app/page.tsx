@@ -7,7 +7,7 @@ import { Analytics } from "@vercel/analytics/next"
 // ============================================================================
 // APP CONFIGURATION - Update version here only!
 // ============================================================================
-const APP_VERSION = "1.2.13";
+const APP_VERSION = "1.2.14";
 
 // Color schemes
 type ColorScheme = "ocean" | "forest" | "violet" | "sunset" | "slate";
@@ -1950,23 +1950,12 @@ onClick={() => {
       </div>
 
 {/* View Mode Buttons */}
+{/* View Mode Buttons */}
 <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
   <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
     📱 View Mode
   </label>
-  <div className="grid grid-cols-3 gap-2">
-    <button
-      onClick={() => setViewMode('normal')}
-      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-        viewMode === 'normal'
-          ? `${theme.buttonBg} ${theme.buttonText}`
-          : isDarkMode 
-            ? "bg-slate-700 hover:bg-slate-600 text-slate-300" 
-            : "bg-gray-100 hover:bg-gray-200 text-gray-600"
-      }`}
-    >
-      All Enabled
-    </button>
+  <div className="grid grid-cols-2 gap-2">
     <button
       onClick={() => setViewMode('compact')}
       className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
