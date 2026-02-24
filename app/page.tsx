@@ -132,6 +132,13 @@ export default function Home() {
     volume: number;
   } | null>(null);
   const [pendingAlarms, setPendingAlarms] = useState<typeof alarms[0][]>([]);
+
+const [storageUsage, setStorageUsage] = useState<{
+  usage: number;
+  quota: number;
+  percentUsed: number;
+} | null>(null);
+
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -268,31 +275,42 @@ export default function Home() {
   }, []);
 
   // Test IndexedDB connection
-  useEffect(() => {
-    const testIndexedDB = async () => {
-      try {
-        const { isIndexedDBSupported, getStorageEstimate } = await import('./lib/db');
+// Test IndexedDB connection and get storage usage
+useEffect(() => {
+  const checkStorage = async () => {
+    try {
+      const { isIndexedDBSupported, getStorageEstimate } = await import('./lib/db');
+      
+      if (isIndexedDBSupported()) {
+        console.log('✅ IndexedDB is supported!');
         
-        if (isIndexedDBSupported()) {
-          console.log('✅ IndexedDB is supported!');
-          
-          const estimate = await getStorageEstimate();
-          console.log('💾 Storage estimate:', {
-            usage: `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`,
-            quota: `${(estimate.quota / 1024 / 1024).toFixed(2)} MB`,
-            percentUsed: `${estimate.percentUsed.toFixed(1)}%`,
-          });
-        } else {
-          console.error('❌ IndexedDB is NOT supported in this browser');
+        const estimate = await getStorageEstimate();
+        setStorageUsage({
+          usage: estimate.usage,
+          quota: estimate.quota,
+          percentUsed: estimate.percentUsed,
+        });
+        
+        console.log('💾 Storage estimate:', {
+          usage: `${(estimate.usage / 1024 / 1024).toFixed(2)} MB`,
+          quota: `${(estimate.quota / 1024 / 1024).toFixed(2)} MB`,
+          percentUsed: `${estimate.percentUsed.toFixed(1)}%`,
+        });
+        
+        // Warn if over 80% full
+        if (estimate.percentUsed > 80) {
+          console.warn('⚠️ Storage is over 80% full!');
         }
-      } catch (error) {
-        console.error('❌ Error testing IndexedDB:', error);
+      } else {
+        console.error('❌ IndexedDB is NOT supported in this browser');
       }
-    };
-    
-    testIndexedDB();
-  }, []);
-
+    } catch (error) {
+      console.error('❌ Error checking storage:', error);
+    }
+  };
+  
+  checkStorage();
+}, []);
   useEffect(() => {
     if (isModalOpen && selectedHour && selectedMinute && selectedDays.length > 0) {
       const formattedTime = formatTime12Hour(selectedHour, selectedMinute, isPM);
@@ -358,6 +376,15 @@ export default function Home() {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+// Check storage before uploading
+if (storageUsage && storageUsage.percentUsed > 90) {
+  const proceed = confirm('⚠️ Storage is over 90% full!\n\nThis file may not save properly.\n\nDelete some alarms or use URL option instead.\n\nProceed anyway?');
+  if (!proceed) {
+    event.target.value = '';
+    return;
+  }
+}
     
     // Check file size (limit to 10MB for IndexedDB)
     if (file.size > 10 * 1024 * 1024) {
@@ -836,7 +863,7 @@ export default function Home() {
       allAlarmsEnabled,
       customSounds: soundsData,
       exportDate: new Date().toISOString(),
-      version: '1.2.0'
+      version: '1.1.21'
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1248,7 +1275,7 @@ const handleDeleteAlarm = async (id: number) => {
       <header className={`p-6 border-b flex justify-between items-center ${
         isDarkMode ? "border-slate-700" : "border-gray-300"
       }`}>
-        <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.17</span></h1>
+        <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.21</span></h1>
         
         <button
           id="menu-button"
@@ -1405,6 +1432,44 @@ const handleDeleteAlarm = async (id: number) => {
 
           <div className={`p-4 border-t ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
             <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+
+{/* Storage Usage */}
+<div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+  <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+    💾 Storage Usage
+  </label>
+  {storageUsage ? (
+    <div>
+      <div className={`text-xs mb-1 ${
+        storageUsage.percentUsed > 80 
+          ? "text-red-500" 
+          : storageUsage.percentUsed > 50 
+            ? "text-yellow-500" 
+            : isDarkMode ? "text-slate-400" : "text-gray-500"
+      }`}>
+        {(storageUsage.usage / 1024 / 1024).toFixed(2)} MB / {(storageUsage.quota / 1024 / 1024).toFixed(0)} MB used ({storageUsage.percentUsed.toFixed(1)}%)
+      </div>
+      <div className={`w-full h-2 rounded-full ${isDarkMode ? "bg-slate-700" : "bg-gray-200"}`}>
+        <div 
+          className={`h-2 rounded-full transition-all ${
+            storageUsage.percentUsed > 80 
+              ? "bg-red-500" 
+              : storageUsage.percentUsed > 50 
+                ? "bg-yellow-500" 
+                : "bg-cyan-500"
+          }`}
+          style={{ width: `${Math.min(storageUsage.percentUsed, 100)}%` }}
+        ></div>
+      </div>
+      {storageUsage.percentUsed > 80 && (
+        <p className="text-xs text-red-500 mt-1">⚠️ Storage almost full! Delete unused alarms or use URLs for large files.</p>
+      )}
+    </div>
+  ) : (
+    <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Loading...</p>
+  )}
+</div>
+
               💾 Backup & Restore
             </label>
             <div className="space-y-2">
@@ -1419,15 +1484,35 @@ const handleDeleteAlarm = async (id: number) => {
                 📤 Export Data
               </button>
               <button
-                onClick={() => document.getElementById('import-file')?.click()}
-                className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  isDarkMode 
-                    ? "bg-purple-600/20 hover:bg-purple-600/30 text-purple-400" 
-                    : "bg-purple-100 hover:bg-purple-200 text-purple-600"
-                }`}
-              >
-                📥 Import Data
-              </button>
+  onClick={() => document.getElementById('import-file')?.click()}
+  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left mb-3 ${
+    isDarkMode 
+      ? "bg-purple-600/20 hover:bg-purple-600/30 text-purple-400" 
+      : "bg-purple-100 hover:bg-purple-200 text-purple-600"
+  }`}
+>
+  📥 Import Data
+</button>
+<button
+  onClick={async () => {
+    const { getStorageEstimate } = await import('./lib/db');
+    const estimate = await getStorageEstimate();
+    setStorageUsage({
+      usage: estimate.usage,
+      quota: estimate.quota,
+      percentUsed: estimate.percentUsed,
+    });
+    alert(`📊 Storage refreshed!\n\nUsed: ${(estimate.usage / 1024 / 1024).toFixed(2)} MB\nQuota: ${(estimate.quota / 1024 / 1024).toFixed(0)} MB\nUsed: ${estimate.percentUsed.toFixed(1)}%`);
+  }}
+  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+    isDarkMode 
+      ? "bg-slate-700 hover:bg-slate-600 text-slate-300" 
+      : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+  }`}
+>
+  🔄 Refresh Storage Info
+</button>
+              
             </div>
           </div>
 
