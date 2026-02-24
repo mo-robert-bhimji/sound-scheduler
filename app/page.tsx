@@ -7,7 +7,7 @@ import { Analytics } from "@vercel/analytics/next"
 // ============================================================================
 // APP CONFIGURATION - Update version here only!
 // ============================================================================
-const APP_VERSION = "1.2.04";
+const APP_VERSION = "1.2.10";
 
 // Color schemes
 type ColorScheme = "ocean" | "forest" | "violet" | "sunset" | "slate";
@@ -103,6 +103,8 @@ export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [helpSection, setHelpSection] = useState<'main' | 'tutorial' | 'faq' | 'about' | 'contact'>('main');
+  const [isMobile, setIsMobile] = useState(false);
+  const [showResetOptions, setShowResetOptions] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -827,6 +829,17 @@ const handleInstallClick = async () => {
     };
   }, []);
 
+// Detect mobile device
+useEffect(() => {
+  const checkMobile = () => {
+    setIsMobile(window.innerWidth < 768); // Tailwind md breakpoint
+  };
+  
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  return () => window.removeEventListener('resize', checkMobile);
+}, []);
+
   const parseTime12Hour = (time12: string) => {
     if (!time12) return { hour: "07", minute: "00", isPM: false };
     const [time, ampm] = time12.split(" ");
@@ -1380,7 +1393,9 @@ const handleClearAllSounds = async () => {
       id="help-button"
 onClick={() => {
   setIsHelpOpen(!isHelpOpen);
-  setHelpSection('main'); // Reset to main menu when closing
+  if (!isHelpOpen) {
+    setHelpSection('main');
+  }
 }}
       className={`p-2 rounded-lg transition-colors ${
         isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
@@ -1447,30 +1462,36 @@ onClick={() => {
 
 
 {/* Help Menu */}
-{/* Help Menu */}
 {isHelpOpen && (
   <div 
     id="help-menu"
-    className={`absolute right-20 top-20 z-50 w-96 max-h-[80vh] overflow-y-auto rounded-xl shadow-2xl border overflow-hidden ${
-      isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
-    }`}
+    className={`z-50 rounded-xl shadow-2xl border overflow-hidden ${
+      isMobile 
+        ? 'fixed inset-0 w-full h-full' 
+        : 'absolute right-20 top-20 w-96 max-h-[80vh]'
+    } ${isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"}`}
   >
-    {/* Back Button (when in sub-section) */}
-    {helpSection !== 'main' && (
-      <button
-        onClick={() => setHelpSection('main')}
-        className={`w-full px-4 py-3 flex items-center gap-2 border-b transition-colors ${
-          isDarkMode 
-            ? "bg-slate-700 hover:bg-slate-600 border-slate-600 text-white" 
-            : "bg-gray-100 hover:bg-gray-200 border-gray-200 text-slate-900"
-        }`}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        <span className="font-medium">Back</span>
-      </button>
+    {/* Mobile Header */}
+    {isMobile && (
+      <div className={`p-4 border-b flex justify-between items-center ${
+        isDarkMode ? "border-slate-700" : "border-gray-200"
+      }`}>
+        <h2 className="text-xl font-bold">Help</h2>
+        <button
+          onClick={() => {
+            setIsHelpOpen(false);
+            setHelpSection('main');
+          }}
+          className={`p-2 rounded-lg ${isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-200"}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     )}
+
+<div className={isMobile ? 'overflow-y-auto h-[calc(100vh-80px)]' : 'overflow-y-auto max-h-[80vh]'}>
 
     {/* MAIN MENU */}
     {helpSection === 'main' && (
@@ -1766,6 +1787,7 @@ onClick={() => {
       </p>
     </div>
 
+
     <div className={`p-3 rounded-lg border-2 ${
       isDarkMode ? "border-cyan-600 bg-cyan-900/20" : "border-cyan-400 bg-cyan-50"
     }`}>
@@ -1834,268 +1856,320 @@ onClick={() => {
     </div>
   </div>
 )}
+</div>
   </div>
 )}
-      {isMenuOpen && (
-        <div 
-          id="main-menu"
-          className={`absolute right-4 top-20 z-50 w-72 rounded-xl shadow-2xl border overflow-hidden ${
-            isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
+{/* Main Menu */}
+{isMenuOpen && (
+  <div 
+    id="main-menu"
+    className={`z-50 rounded-xl shadow-2xl border overflow-hidden ${
+      isMobile 
+        ? 'fixed inset-0 w-full h-full' 
+        : 'absolute right-4 top-20 w-80'
+    } ${isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"}`}
+  >
+    {/* Mobile Header */}
+    {isMobile && (
+      <div className={`p-4 border-b flex justify-between items-center ${
+        isDarkMode ? "border-slate-700" : "border-gray-200"
+      }`}>
+        <h2 className="text-xl font-bold">Menu</h2>
+        <button
+          onClick={() => setIsMenuOpen(false)}
+          className={`p-2 rounded-lg ${isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-200"}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    )}
+
+    {/* Scrollable Content */}
+    <div className={isMobile ? 'overflow-y-auto h-[calc(100vh-80px)]' : 'max-h-[80vh] overflow-y-auto'}>
+      
+      {/* Dark Mode Toggle */}
+      <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+        <label className="flex items-center justify-between cursor-pointer">
+          <span className={`text-sm font-semibold ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+            {isDarkMode ? "🌙 Dark Mode" : "☀️ Light Mode"}
+          </span>
+          <div className="relative">
+            <input 
+              type="checkbox" 
+              className="sr-only" 
+              checked={isDarkMode}
+              onChange={() => setIsDarkMode(!isDarkMode)}
+            />
+            <div className={`block w-12 h-7 rounded-full transition-colors ${
+              isDarkMode ? "bg-cyan-600" : "bg-gray-400"
+            }`}></div>
+            <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform ${
+              isDarkMode ? "transform translate-x-5" : "transform translate-x-0"
+            }`}></div>
+          </div>
+        </label>
+      </div>
+
+      {/* All Enabled/Disabled */}
+      <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+        <button
+          onClick={() => {
+            handleToggleAllAlarms();
+            if (isMobile) setIsMenuOpen(false);
+          }}
+          className={`w-full px-4 py-3 rounded-lg font-bold transition-all ${
+            allAlarmsEnabled
+              ? `${theme.buttonBg} ${theme.buttonText}`
+              : isDarkMode
+                ? "bg-red-500/20 text-red-400 border border-red-600"
+                : "bg-red-100 text-red-600 border border-red-300"
           }`}
         >
-          <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className={`text-sm font-semibold ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-                {isDarkMode ? "🌙 Dark Mode" : "☀️ Light Mode"}
-              </span>
-              <div className="relative">
-                <input 
-                  type="checkbox" 
-                  className="sr-only" 
-                  checked={isDarkMode}
-                  onChange={() => setIsDarkMode(!isDarkMode)}
-                />
-                <div className={`block w-12 h-7 rounded-full transition-colors ${
-                  isDarkMode ? "bg-cyan-600" : "bg-gray-400"
-                }`}></div>
-                <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform ${
-                  isDarkMode ? "transform translate-x-5" : "transform translate-x-0"
-                }`}></div>
-              </div>
-            </label>
-          </div>
+          {allAlarmsEnabled ? "✅ All Enabled" : "❌ All Disabled"}
+        </button>
+      </div>
 
-          <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+      {/* Storage Usage Section */}
+      <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+        <label className={`block text-sm font-semibold mb-3 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+          💾 Storage Usage
+        </label>
+        {storageUsage ? (
+          <div className="mb-3">
+            <div className={`text-xs mb-1 ${
+              storageUsage.percentUsed > 80 
+                ? "text-red-500" 
+                : storageUsage.percentUsed > 50 
+                  ? "text-yellow-500" 
+                  : isDarkMode ? "text-slate-400" : "text-gray-500"
+            }`}>
+              {(storageUsage.usage / 1024 / 1024).toFixed(2)} MB / {(storageUsage.quota / 1024 / 1024).toFixed(0)} MB used ({storageUsage.percentUsed.toFixed(1)}%)
+            </div>
+            <div className={`w-full h-2 rounded-full ${isDarkMode ? "bg-slate-700" : "bg-gray-200"}`}>
+              <div 
+                className={`h-2 rounded-full transition-all ${
+                  storageUsage.percentUsed > 80 
+                    ? "bg-red-500" 
+                    : storageUsage.percentUsed > 50 
+                      ? "bg-yellow-500" 
+                      : "bg-cyan-500"
+                }`}
+                style={{ width: `${Math.min(storageUsage.percentUsed, 100)}%` }}
+              ></div>
+            </div>
+            {storageUsage.percentUsed > 80 && (
+              <p className="text-xs text-red-500 mt-2">⚠️ Storage almost full!</p>
+            )}
+          </div>
+        ) : (
+          <p className={`text-xs mb-3 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Loading...</p>
+        )}
+        
+        <button
+          onClick={async () => {
+            const { getStorageEstimate } = await import('./lib/db');
+            const estimate = await getStorageEstimate();
+            setStorageUsage({
+              usage: estimate.usage,
+              quota: estimate.quota,
+              percentUsed: estimate.percentUsed,
+            });
+            if (isMobile) {
+              alert(`📊 Storage refreshed!\n\nUsed: ${(estimate.usage / 1024 / 1024).toFixed(2)} MB\nQuota: ${(estimate.quota / 1024 / 1024).toFixed(0)} MB\nUsed: ${estimate.percentUsed.toFixed(1)}%`);
+            }
+          }}
+          className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            isDarkMode 
+              ? "bg-slate-700 hover:bg-slate-600 text-slate-300" 
+              : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+          }`}
+        >
+          🔄 Refresh Storage Info
+        </button>
+      </div>
+
+      {/* Color Theme */}
+      <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+        <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+          🎨 Color Theme
+        </label>
+        <select
+          value={colorScheme}
+          onChange={(e) => {
+            setColorScheme(e.target.value as ColorScheme);
+            if (isMobile) setIsMenuOpen(false);
+          }}
+          className={`w-full p-3 rounded-lg border outline-none focus:ring-2 focus:ring-cyan-500 ${
+            isDarkMode 
+              ? "bg-slate-700 text-white border-slate-600" 
+              : "bg-white text-slate-900 border-gray-300"
+          }`}
+        >
+          <option value="ocean">🌊 Ocean</option>
+          <option value="forest">🌲 Forest</option>
+          <option value="violet">💜 Violet</option>
+          <option value="sunset">🌅 Sunset</option>
+          <option value="slate">🪨 Slate</option>
+        </select>
+      </div>
+
+      {/* Reset Options - NEW */}
+      <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+        <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+          ⚙️ Reset Options
+        </label>
+        
+        {showResetOptions ? (
+          <div className="space-y-2">
             <button
               onClick={() => {
-                handleToggleAllAlarms();
-                setIsMenuOpen(false);
+                handleResetToDemo();
+                if (isMobile) {
+                  setIsMenuOpen(false);
+                  setShowResetOptions(false);
+                }
               }}
-              className={`w-full px-4 py-2 rounded-lg font-bold transition-all ${
-                allAlarmsEnabled
-                  ? `${theme.buttonBg} ${theme.buttonText}`
-                  : isDarkMode
-                    ? "bg-red-500/20 text-red-400 border border-red-600"
-                    : "bg-red-100 text-red-600 border border-red-300"
+              className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                isDarkMode 
+                  ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                  : "bg-gray-100 hover:bg-gray-200 text-slate-900"
               }`}
             >
-              {allAlarmsEnabled ? "✅ All Enabled" : "❌ All Disabled"}
+              🔄 Reset to Demo
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Refresh the page? Any unsaved changes will be lost.")) {
+                  window.location.reload();
+                }
+                if (isMobile) setIsMenuOpen(false);
+              }}
+              className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                isDarkMode 
+                  ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                  : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+              }`}
+            >
+              🔃 Refresh Page
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Restart app? This will clear all data and reload.")) {
+                  localStorage.clear();
+                  window.location.reload();
+                }
+                if (isMobile) setIsMenuOpen(false);
+              }}
+              className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                isDarkMode 
+                  ? "bg-orange-600/20 hover:bg-orange-600/30 text-orange-400" 
+                  : "bg-orange-100 hover:bg-orange-200 text-orange-600"
+              }`}
+            >
+              🔄 Restart App
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("⚠️ DELETE ALL alarms? This cannot be undone!")) {
+                  setAlarms([]);
+                  localStorage.setItem('sound-scheduler-alarms', JSON.stringify([]));
+                }
+                if (isMobile) setIsMenuOpen(false);
+              }}
+              className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                isDarkMode 
+                  ? "bg-red-600/20 hover:bg-red-600/30 text-red-400" 
+                  : "bg-red-100 hover:bg-red-200 text-red-600"
+              }`}
+            >
+              🗑️ Delete All Alarms
+            </button>
+            <button
+              onClick={handleClearAllSounds}
+              className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                isDarkMode 
+                  ? "bg-red-600/20 hover:bg-red-600/30 text-red-400" 
+                  : "bg-red-100 hover:bg-red-200 text-red-600"
+              }`}
+            >
+              🗑️ Clear All Sounds
+            </button>
+            
+            <button
+              onClick={() => setShowResetOptions(false)}
+              className={`w-full px-4 py-2 rounded-lg text-sm font-medium mt-2 ${
+                isDarkMode 
+                  ? "bg-slate-600 hover:bg-slate-500 text-white" 
+                  : "bg-gray-300 hover:bg-gray-400 text-gray-700"
+              }`}
+            >
+              ← Back to Menu
             </button>
           </div>
-
-          <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-              🎨 Color Theme
-            </label>
-            <select
-              value={colorScheme}
-              onChange={(e) => {
-                setColorScheme(e.target.value as ColorScheme);
-                setIsMenuOpen(false);
-              }}
-              className={`w-full p-2 rounded-lg border outline-none focus:ring-2 focus:ring-cyan-500 ${
-                isDarkMode 
-                  ? "bg-slate-700 text-white border-slate-600" 
-                  : "bg-white text-slate-900 border-gray-300"
-              }`}
-            >
-              <option value="ocean">🌊 Ocean</option>
-              <option value="forest">🌲 Forest</option>
-              <option value="violet">💜 Violet</option>
-              <option value="sunset">🌅 Sunset</option>
-              <option value="slate">🪨 Slate</option>
-            </select>
-          </div>
-
-          <div className={`p-4 ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-              ⚙️ Reset Options
-            </label>
-            <div className="space-y-2">
-              <button
-                onClick={() => {
-                  handleResetToDemo();
-                  setIsMenuOpen(false);
-                }}
-                className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  isDarkMode 
-                    ? "bg-slate-700 hover:bg-slate-600 text-white" 
-                    : "bg-gray-100 hover:bg-gray-200 text-slate-900"
-                }`}
-              >
-                🔄 Reset to Demo
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm("Refresh the page? Any unsaved changes will be lost.")) {
-                    window.location.reload();
-                  }
-                  setIsMenuOpen(false);
-                }}
-                className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  isDarkMode 
-                    ? "bg-slate-700 hover:bg-slate-600 text-white" 
-                    : "bg-gray-100 hover:bg-gray-200 text-slate-900"
-                }`}
-              >
-                🔃 Refresh Page
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm("Restart app? This will clear all data and reload.")) {
-                    localStorage.clear();
-                    window.location.reload();
-                  }
-                  setIsMenuOpen(false);
-                }}
-                className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  isDarkMode 
-                    ? "bg-orange-600/20 hover:bg-orange-600/30 text-orange-400" 
-                    : "bg-orange-100 hover:bg-orange-200 text-orange-600"
-                }`}
-              >
-                🔄 Restart App
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm("⚠️ DELETE ALL alarms? This cannot be undone!")) {
-                    setAlarms([]);
-                    localStorage.setItem('sound-scheduler-alarms', JSON.stringify([]));
-                  }
-                  setIsMenuOpen(false);
-                }}
-                className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  isDarkMode 
-                    ? "bg-red-600/20 hover:bg-red-600/30 text-red-400" 
-                    : "bg-red-100 hover:bg-red-200 text-red-600"
-                }`}
-              >
-                🗑️ Delete All Alarms
-              </button>
-            </div>
-          </div>
-
-          <div className={`p-4 border-t ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-
-{/* Storage Usage */}
-<div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-  <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
-    💾 Storage Usage
-  </label>
-  {storageUsage ? (
-    <div>
-      <div className={`text-xs mb-1 ${
-        storageUsage.percentUsed > 80 
-          ? "text-red-500" 
-          : storageUsage.percentUsed > 50 
-            ? "text-yellow-500" 
-            : isDarkMode ? "text-slate-400" : "text-gray-500"
-      }`}>
-        {(storageUsage.usage / 1024 / 1024).toFixed(2)} MB / {(storageUsage.quota / 1024 / 1024).toFixed(0)} MB used ({storageUsage.percentUsed.toFixed(1)}%)
+        ) : (
+          <button
+            onClick={() => setShowResetOptions(true)}
+            className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+              isDarkMode 
+                ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+            }`}
+          >
+            ⚙️ Reset Options →
+          </button>
+        )}
       </div>
-      <div className={`w-full h-2 rounded-full ${isDarkMode ? "bg-slate-700" : "bg-gray-200"}`}>
-        <div 
-          className={`h-2 rounded-full transition-all ${
-            storageUsage.percentUsed > 80 
-              ? "bg-red-500" 
-              : storageUsage.percentUsed > 50 
-                ? "bg-yellow-500" 
-                : "bg-cyan-500"
-          }`}
-          style={{ width: `${Math.min(storageUsage.percentUsed, 100)}%` }}
-        ></div>
-      </div>
-      {storageUsage.percentUsed > 80 && (
-        <p className="text-xs text-red-500 mt-1">⚠️ Storage almost full! Delete unused alarms or use URLs for large files.</p>
-      )}
-    </div>
-  ) : (
-    <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Loading...</p>
-  )}
-</div>
 
-              💾 Backup & Restore
-            </label>
-            <div className="space-y-2">
-              <button
-                onClick={handleExportData}
-                className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  isDarkMode 
-                    ? "bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400" 
-                    : "bg-cyan-100 hover:bg-cyan-200 text-cyan-600"
-                }`}
-              >
-                📤 Export Data
-              </button>
-              <button
-  onClick={() => document.getElementById('import-file')?.click()}
-  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-    isDarkMode 
-      ? "bg-purple-600/20 hover:bg-purple-600/30 text-purple-400" 
-      : "bg-purple-100 hover:bg-purple-200 text-purple-600"
-  }`}
->
-  📥 Import Data
-</button>
-<button
-  onClick={async () => {
-    const { getStorageEstimate } = await import('./lib/db');
-    const estimate = await getStorageEstimate();
-    setStorageUsage({
-      usage: estimate.usage,
-      quota: estimate.quota,
-      percentUsed: estimate.percentUsed,
-    });
-    alert(`📊 Storage refreshed!\n\nUsed: ${(estimate.usage / 1024 / 1024).toFixed(2)} MB\nQuota: ${(estimate.quota / 1024 / 1024).toFixed(0)} MB\nUsed: ${estimate.percentUsed.toFixed(1)}%`);
-  }}
-  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-    isDarkMode 
-      ? "bg-slate-700 hover:bg-slate-600 text-slate-300" 
-      : "bg-gray-100 hover:bg-gray-200 text-gray-600"
-  }`}
->
-  🔄 Refresh Storage Info
-</button>
-
-<button
-  onClick={handleClearAllSounds}
-  className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-    isDarkMode 
-      ? "bg-red-600/20 hover:bg-red-600/30 text-red-400" 
-      : "bg-red-100 hover:bg-red-200 text-red-600"
-  }`}
->
-  🗑️ Clear All Sounds
-
-
-</button>
-
-
-              
-            </div>
-          </div>
-
-          <input
-            type="file"
-            id="import-file"
-            accept=".json"
-            onChange={handleImportData}
-            className="hidden"
-          />
-
-          <div className={`p-4 border-t ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-            <div className={`text-xs px-3 py-2 rounded-lg text-center ${
-              notificationPermission === "granted" 
-                ? "bg-green-500/20 text-green-400" 
-                : "bg-yellow-500/20 text-yellow-400"
-            }`}>
-              {notificationPermission === "granted" ? "🔔 Notifications On" : "🔕 Notifications Off"}
-            </div>
-          </div>
+      {/* Backup & Restore */}
+      <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+        <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+          💾 Backup & Restore
+        </label>
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              handleExportData();
+              if (isMobile) setIsMenuOpen(false);
+            }}
+            className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+              isDarkMode 
+                ? "bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400" 
+                : "bg-cyan-100 hover:bg-cyan-200 text-cyan-600"
+            }`}
+          >
+            📤 Export Data
+          </button>
+          <button
+            onClick={() => {
+              document.getElementById('import-file')?.click();
+              if (isMobile) setIsMenuOpen(false);
+            }}
+            className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left mb-3 ${
+              isDarkMode 
+                ? "bg-purple-600/20 hover:bg-purple-600/30 text-purple-400" 
+                : "bg-purple-100 hover:bg-purple-200 text-purple-600"
+            }`}
+          >
+            📥 Import Data
+          </button>
         </div>
-      )}
+      </div>
 
+      {/* Notification Status */}
+      <div className={`p-4 ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+        <div className={`text-xs px-3 py-3 rounded-lg text-center ${
+          notificationPermission === "granted" 
+            ? "bg-green-500/20 text-green-400" 
+            : "bg-yellow-500/20 text-yellow-400"
+        }`}>
+          {notificationPermission === "granted" ? "🔔 Notifications On" : "🔕 Notifications Off"}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       <main className="p-6 pb-24">
         <h2 className={`text-lg mb-4 ${
           isDarkMode ? "text-slate-400" : "text-gray-500"
