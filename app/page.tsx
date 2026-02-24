@@ -7,7 +7,7 @@ import { Analytics } from "@vercel/analytics/next"
 // ============================================================================
 // APP CONFIGURATION - Update version here only!
 // ============================================================================
-const APP_VERSION = "1.2.12";
+const APP_VERSION = "1.2.13";
 
 // Color schemes
 type ColorScheme = "ocean" | "forest" | "violet" | "sunset" | "slate";
@@ -105,6 +105,7 @@ export default function Home() {
   const [helpSection, setHelpSection] = useState<'main' | 'tutorial' | 'faq' | 'about' | 'contact'>('main');
   const [isMobile, setIsMobile] = useState(false);
   const [showResetOptions, setShowResetOptions] = useState(false);
+  const [viewMode, setViewMode] = useState<'normal' | 'compact' | 'ultra'>('normal');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -953,6 +954,23 @@ const blobToBase64 = (blob: Blob): Promise<string> => {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+};
+
+// Format days for ultra-compact view: M|T|W|T|F|S|S
+const formatDaysUltraCompact = (days: string[]) => {
+  const dayMap: Record<string, string> = {
+    'MON': 'M',
+    'TUE': 'T',
+    'WED': 'W',
+    'THU': 'T',
+    'FRI': 'F',
+    'SAT': 'S',
+    'SUN': 'S',
+  };
+  
+  return DAYS.map(day => 
+    days.includes(day) ? dayMap[day] : '-'
+  ).join('|');
 };
 
 const handleImportData = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1931,6 +1949,52 @@ onClick={() => {
         </button>
       </div>
 
+{/* View Mode Buttons */}
+<div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+  <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+    📱 View Mode
+  </label>
+  <div className="grid grid-cols-3 gap-2">
+    <button
+      onClick={() => setViewMode('normal')}
+      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+        viewMode === 'normal'
+          ? `${theme.buttonBg} ${theme.buttonText}`
+          : isDarkMode 
+            ? "bg-slate-700 hover:bg-slate-600 text-slate-300" 
+            : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+      }`}
+    >
+      All Enabled
+    </button>
+    <button
+      onClick={() => setViewMode('compact')}
+      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+        viewMode === 'compact'
+          ? `${theme.buttonBg} ${theme.buttonText}`
+          : isDarkMode 
+            ? "bg-slate-700 hover:bg-slate-600 text-slate-300" 
+            : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+      }`}
+    >
+      Compact
+    </button>
+    <button
+      onClick={() => setViewMode('ultra')}
+      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+        viewMode === 'ultra'
+          ? `${theme.buttonBg} ${theme.buttonText}`
+          : isDarkMode 
+            ? "bg-slate-700 hover:bg-slate-600 text-slate-300" 
+            : "bg-gray-100 hover:bg-gray-200 text-gray-600"
+      }`}
+    >
+      Ultra Compact
+    </button>
+  </div>
+</div>
+
+
       {/* Storage Usage Section */}
       <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
         <label className={`block text-sm font-semibold mb-3 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
@@ -2189,227 +2253,228 @@ onClick={() => {
           </div>
         ) : (
           <div className="space-y-3">
-            {sortedAlarms.map((alarm) => {
-              const isPlayed = alarm.played;
-              const isPlaying = playingSoundId === alarm.soundId;
-              const customUrl = alarm.customUrl;
-              const isInactive = alarm.days.length === 0;
-              const isPending = pendingAlarms.find(p => p.id === alarm.id);
-              const isMuted = alarm.volume === 0;
-              const isAlarmEnabled = alarm.enabled && allAlarmsEnabled;
-              const hasValidSound = alarm.soundId !== "custom" || alarm.customUrl;
-              
-              const canTrigger = !isInactive && isAlarmEnabled && !isMuted && hasValidSound;
-              
-return (
-  <div
-    key={alarm.id}
-    className={`rounded-lg p-4 border transition-all duration-300 ${
-      !canTrigger
-        ? isDarkMode 
-          ? "bg-slate-800/30 border-slate-700 opacity-30" 
-          : "bg-gray-100 border-gray-200 opacity-30"
-        : isPending
-          ? isDarkMode
-            ? "bg-yellow-900/20 border-yellow-600"
-            : "bg-yellow-50 border-yellow-300"
-          : isDarkMode 
-            ? (isPlayed ? "bg-slate-900 border-slate-800 opacity-50" : "bg-slate-800 border-slate-700") 
-            : (isPlayed ? "bg-gray-200 border-gray-300 opacity-50" : "bg-white border-gray-200 shadow-sm")
-    }`}
-  >
-    {/* Row 1: Time + Enable Button */}
-    <div className="flex justify-between items-start mb-2">
-      <div className="flex items-baseline gap-2">
-        <p className={`text-2xl font-bold ${
+{sortedAlarms.map((alarm) => {
+  const isPlayed = alarm.played;
+  const isPlaying = playingSoundId === alarm.soundId;
+  const customUrl = alarm.customUrl;
+  const isInactive = alarm.days.length === 0;
+  const isPending = pendingAlarms.find(p => p.id === alarm.id);
+  const isMuted = alarm.volume === 0;
+  const isAlarmEnabled = alarm.enabled && allAlarmsEnabled;
+  const hasValidSound = alarm.soundId !== "custom" || alarm.customUrl;
+  
+  const canTrigger = !isInactive && isAlarmEnabled && !isMuted && hasValidSound;
+  
+  // ULTRA COMPACT VIEW
+  if (viewMode === 'ultra') {
+    return (
+      <div
+        key={alarm.id}
+        className={`rounded-lg p-3 border transition-all duration-300 ${
           !canTrigger
-            ? isDarkMode ? "text-slate-600" : "text-gray-400"
+            ? isDarkMode 
+              ? "bg-slate-800/30 border-slate-700 opacity-30" 
+              : "bg-gray-100 border-gray-200 opacity-30"
             : isPending
-              ? isDarkMode ? "text-yellow-400" : "text-yellow-600"
-              : isDarkMode ? theme.primaryDark : theme.primary
-        }`}>
-          {alarm.time || "--:--"}
-        </p>
-        {alarm.interruptPrevious && canTrigger && (
-          <span className={`text-xs px-2 py-0.5 rounded ${
-            isDarkMode ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-600"
-          }`} title="Will stop any currently playing audio">
-            ⚡
-          </span>
-        )}
-        {isPending && (
-          <span className={`text-xs px-2 py-0.5 rounded ${
-            isDarkMode ? "bg-yellow-500/20 text-yellow-400" : "bg-yellow-200 text-yellow-700"
-          }`}>
-            ⏳ Waiting
-          </span>
-        )}
-      </div>
-      
-      {/* Enable Button */}
-      <button 
-        onClick={() => handleToggleAlarmEnabled(alarm.id)}
-        disabled={isInactive || isMuted}
-        className={`p-3 rounded-full transition-colors ${
-          isInactive || isMuted
-            ? isDarkMode 
-              ? "text-slate-600 cursor-not-allowed" 
-              : "text-gray-300 cursor-not-allowed"
-            : alarm.enabled && allAlarmsEnabled
-              ? "text-green-400 hover:bg-slate-700"
-              : "text-red-400 hover:bg-slate-700"
-        }`}
-        title={isInactive ? "Select days first" : isMuted ? "Unmute to enable/disable" : alarm.enabled ? "Disable this alarm" : "Enable this alarm"}
-      >
-        {isInactive || isMuted ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z"/>
-          </svg>
-        ) : alarm.enabled && allAlarmsEnabled ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-          </svg>
-        )}
-      </button>
-    </div>
-
-    {/* Row 2: Days (Full Width) */}
-    <p className={`text-sm font-medium mb-2 ${
-      !canTrigger
-        ? isDarkMode ? "text-red-400" : "text-red-500"
-        : isDarkMode ? "text-slate-400" : "text-gray-500"
-    }`}>
-      {formatDays(alarm.days)}
-      {!canTrigger && (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2 inline text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-        </svg>
-      )}
-      {canTrigger && isPlayed && (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2 inline text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      )}
-      {canTrigger && !isPlayed && (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2 inline text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )}
-    </p>
-
-    {/* Row 3: Sound Name + Volume + Play Button */}
-    <div className="flex justify-between items-center mb-3">
-      <div className="flex items-center gap-2">
-        <p className={`text-sm ${
-          !canTrigger
-            ? isDarkMode ? "text-slate-600" : "text-gray-400"
-            : isDarkMode ? "text-slate-400" : "text-gray-500"
-        }`}>
-          {alarm.sound || "Unnamed"}
-        </p>
-        {canTrigger && (
-          <span className={`text-xs ${theme.volumeText}`} title={`Volume: ${alarm.volume}/10 (${getVolumeLabel(alarm.volume)})`}>
-            {alarm.volume}/10
-          </span>
-        )}
-        {!canTrigger && (
-          <span className={`text-xs px-2 py-0.5 rounded ${
-            isMuted
-              ? isDarkMode ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-600"
-              : isDarkMode ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-600"
-          }`}>
-            {isMuted ? "🔇 Muted" : "❌ Disabled"}
-          </span>
-        )}
-      </div>
-      
-      {/* Play Button */}
-      <button 
-        onClick={() => handleTestSound(alarm.soundId, customUrl, alarm.volume / 10)}
-        disabled={!canTrigger || activeAlarm !== null}
-        className={`p-3 rounded-full transition-colors ${
-          isPlaying
-            ? "bg-red-500 text-white animate-pulse"
-            : !canTrigger
-              ? isDarkMode 
-                ? "text-slate-600 cursor-not-allowed" 
-                : "text-gray-300 cursor-not-allowed"
+              ? isDarkMode
+                ? "bg-yellow-900/20 border-yellow-600"
+                : "bg-yellow-50 border-yellow-300"
               : isDarkMode 
-                ? "text-green-400 hover:bg-slate-700" 
-                : "text-green-600 hover:bg-gray-100"
+                ? (isPlayed ? "bg-slate-900 border-slate-800 opacity-50" : "bg-slate-800 border-slate-700") 
+                : (isPlayed ? "bg-gray-200 border-gray-300 opacity-50" : "bg-white border-gray-200 shadow-sm")
         }`}
-        title={isPlaying ? "Stop sound" : !canTrigger ? (isMuted ? "Muted (volume = 0)" : "Disabled alarm") : "Test sound"}
       >
-        {isPlaying ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <rect x="6" y="4" width="4" height="16"/>
-            <rect x="14" y="4" width="4" height="16"/>
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
-        )}
-      </button>
-    </div>
-
-    {/* Row 4: Clone/Edit/Delete Buttons */}
-    <div className="flex gap-2 pt-2 border-t ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}">
-      {/* Clone Button */}
-      <button 
-        onClick={() => handleCloneAlarm(alarm)}
-        disabled={!canTrigger}
-        className={`flex-1 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${
+        {/* Row 1: Time + Days + Enable */}
+        <div className="flex justify-between items-center mb-1">
+          <div className="flex items-center gap-2">
+            <p className={`text-lg font-bold ${
+              !canTrigger
+                ? isDarkMode ? "text-slate-600" : "text-gray-400"
+                : isPending
+                  ? isDarkMode ? "text-yellow-400" : "text-yellow-600"
+                  : isDarkMode ? theme.primaryDark : theme.primary
+            }`}>
+              {alarm.time || "--:--"}
+            </p>
+            <p className={`text-xs font-mono ${
+              !canTrigger
+                ? isDarkMode ? "text-red-400" : "text-red-500"
+                : isDarkMode ? "text-slate-400" : "text-gray-500"
+            }`}>
+              {formatDaysUltraCompact(alarm.days)}
+            </p>
+          </div>
+          
+          <button 
+            onClick={() => handleToggleAlarmEnabled(alarm.id)}
+            disabled={isInactive || isMuted}
+            className={`p-2 rounded-full transition-colors ${
+              isInactive || isMuted
+                ? isDarkMode ? "text-slate-600 cursor-not-allowed" : "text-gray-300 cursor-not-allowed"
+                : alarm.enabled && allAlarmsEnabled
+                  ? "text-green-400 hover:bg-slate-700"
+                  : "text-red-400 hover:bg-slate-700"
+            }`}
+          >
+            {alarm.enabled && allAlarmsEnabled ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+              </svg>
+            )}
+          </button>
+        </div>
+        
+        {/* Row 2: Sound + Play + Actions */}
+        <div className="flex justify-between items-center">
+          <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+            {alarm.sound}
+          </p>
+          <div className="flex gap-1">
+            <button 
+              onClick={() => handleTestSound(alarm.soundId, customUrl, alarm.volume / 10)}
+              disabled={!canTrigger || activeAlarm !== null}
+              className={`p-2 rounded-full transition-colors ${
+                isPlaying
+                  ? "bg-red-500 text-white"
+                  : !canTrigger
+                    ? isDarkMode ? "text-slate-600 cursor-not-allowed" : "text-gray-300 cursor-not-allowed"
+                    : isDarkMode ? "text-green-400 hover:bg-slate-700" : "text-green-600 hover:bg-gray-100"
+              }`}
+            >
+              {isPlaying ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="6" y="4" width="4" height="16"/>
+                  <rect x="14" y="4" width="4" height="16"/>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              )}
+            </button>
+            <button 
+              onClick={() => handleOpenEditAlarm(alarm)}
+              className={`p-2 rounded-full transition-colors ${
+                isDarkMode ? "text-cyan-400 hover:bg-slate-700" : "text-cyan-600 hover:bg-gray-100"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button 
+              onClick={() => handleDeleteAlarm(alarm.id)}
+              className={`p-2 rounded-full transition-colors ${
+                isDarkMode ? "text-slate-500 hover:bg-slate-700" : "text-gray-400 hover:bg-gray-100"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // COMPACT VIEW (simplified version)
+  if (viewMode === 'compact') {
+    return (
+      <div
+        key={alarm.id}
+        className={`rounded-lg p-3 border transition-all duration-300 ${
           !canTrigger
             ? isDarkMode 
-              ? "text-slate-600 cursor-not-allowed" 
-              : "text-gray-300 cursor-not-allowed"
-            : isDarkMode 
-              ? "text-purple-400 hover:bg-slate-700" 
-              : "text-purple-600 hover:bg-gray-100"
+              ? "bg-slate-800/30 border-slate-700 opacity-30" 
+              : "bg-gray-100 border-gray-200 opacity-30"
+            : isPending
+              ? isDarkMode
+                ? "bg-yellow-900/20 border-yellow-600"
+                : "bg-yellow-50 border-yellow-300"
+              : isDarkMode 
+                ? (isPlayed ? "bg-slate-900 border-slate-800 opacity-50" : "bg-slate-800 border-slate-700") 
+                : (isPlayed ? "bg-gray-200 border-gray-300 opacity-50" : "bg-white border-gray-200 shadow-sm")
         }`}
-        title="Duplicate this alarm"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-        <span className="text-xs font-medium">Clone</span>
-      </button>
-      
-      {/* Edit Button */}
-      <button 
-        onClick={() => handleOpenEditAlarm(alarm)}
-        className={`flex-1 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${
-          isDarkMode ? "text-cyan-400 hover:bg-slate-700" : "text-cyan-600 hover:bg-gray-100"
-        }`}
-        title="Edit alarm"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-        <span className="text-xs font-medium">Edit</span>
-      </button>
-      
-      {/* Delete Button */}
-      <button 
-        onClick={() => handleDeleteAlarm(alarm.id)}
-        className={`flex-1 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${
-          isDarkMode ? "text-slate-500 hover:bg-slate-700" : "text-gray-400 hover:bg-gray-100"
-        }`}
-        title="Delete alarm"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        <span className="text-xs font-medium">Delete</span>
-      </button>
-    </div>
-  </div>
-);            })}
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <p className={`text-xl font-bold ${
+              !canTrigger
+                ? isDarkMode ? "text-slate-600" : "text-gray-400"
+                : isPending
+                  ? isDarkMode ? "text-yellow-400" : "text-yellow-600"
+                  : isDarkMode ? theme.primaryDark : theme.primary
+            }`}>
+              {alarm.time || "--:--"}
+            </p>
+            <p className={`text-xs mt-1 ${
+              !canTrigger
+                ? isDarkMode ? "text-red-400" : "text-red-500"
+                : isDarkMode ? "text-slate-400" : "text-gray-500"
+            }`}>
+              {formatDays(alarm.days)}
+            </p>
+          </div>
+          <button 
+            onClick={() => handleToggleAlarmEnabled(alarm.id)}
+            disabled={isInactive || isMuted}
+            className={`p-2 rounded-full transition-colors ${
+              isInactive || isMuted
+                ? isDarkMode ? "text-slate-600 cursor-not-allowed" : "text-gray-300 cursor-not-allowed"
+                : alarm.enabled && allAlarmsEnabled
+                  ? "text-green-400 hover:bg-slate-700"
+                  : "text-red-400 hover:bg-slate-700"
+            }`}
+          >
+            {alarm.enabled && allAlarmsEnabled ? "✓" : "○"}
+          </button>
+        </div>
+        <div className="flex justify-between items-center">
+          <p className={`text-sm ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+            {alarm.sound}
+          </p>
+          <div className="flex gap-1">
+            <button 
+              onClick={() => handleCloneAlarm(alarm)}
+              disabled={!canTrigger}
+              className={`p-2 rounded ${!canTrigger ? 'opacity-30' : isDarkMode ? 'hover:bg-slate-700 text-purple-400' : 'hover:bg-gray-100 text-purple-600'}`}
+            >
+              📋
+            </button>
+            <button 
+              onClick={() => handleTestSound(alarm.soundId, customUrl, alarm.volume / 10)}
+              disabled={!canTrigger || activeAlarm !== null}
+              className={`p-2 rounded ${isPlaying ? 'bg-red-500 text-white' : !canTrigger ? 'opacity-30' : isDarkMode ? 'hover:bg-slate-700 text-green-400' : 'hover:bg-gray-100 text-green-600'}`}
+            >
+              {isPlaying ? '⏹' : '▶'}
+            </button>
+            <button 
+              onClick={() => handleOpenEditAlarm(alarm)}
+              className={`p-2 rounded ${isDarkMode ? 'hover:bg-slate-700 text-cyan-400' : 'hover:bg-gray-100 text-cyan-600'}`}
+            >
+              ✏️
+            </button>
+            <button 
+              onClick={() => handleDeleteAlarm(alarm.id)}
+              className={`p-2 rounded ${isDarkMode ? 'hover:bg-slate-700 text-slate-500' : 'hover:bg-gray-100 text-gray-400'}`}
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // NORMAL VIEW (existing code you already have)
+  // ... keep your existing normal view card code here ...
+
+    })}
           </div>
         )}
       </main>
