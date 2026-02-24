@@ -7,7 +7,7 @@ import { Analytics } from "@vercel/analytics/next"
 // ============================================================================
 // APP CONFIGURATION - Update version here only!
 // ============================================================================
-const APP_VERSION = "1.2.02";
+const APP_VERSION = "1.2.04";
 
 // Color schemes
 type ColorScheme = "ocean" | "forest" | "violet" | "sunset" | "slate";
@@ -102,6 +102,9 @@ export default function Home() {
   const [colorScheme, setColorScheme] = useState<ColorScheme>("ocean");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [helpSection, setHelpSection] = useState<'main' | 'tutorial' | 'faq' | 'about' | 'contact'>('main');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<{
     id: number; 
@@ -776,6 +779,33 @@ if (storageUsage && storageUsage.percentUsed > 90) {
     }
   }, []);
 
+// PWA Install Prompt
+useEffect(() => {
+  const handleBeforeInstallPrompt = (e: Event) => {
+    e.preventDefault();
+    setDeferredPrompt(e);
+    setShowInstallPrompt(true);
+    console.log('📱 Install prompt ready');
+  };
+
+  window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+  return () => {
+    window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  };
+}, []);
+
+const handleInstallClick = async () => {
+  if (!deferredPrompt) return;
+  
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  
+  console.log(`📱 Install outcome: ${outcome}`);
+  setDeferredPrompt(null);
+  setShowInstallPrompt(false);
+};
+
   useEffect(() => {
     if (alarms.length >= 0) {
       localStorage.setItem('sound-scheduler-alarms', JSON.stringify(alarms));
@@ -1348,7 +1378,10 @@ const handleClearAllSounds = async () => {
     {/* Help Button - NEW */}
     <button
       id="help-button"
-      onClick={() => setIsHelpOpen(!isHelpOpen)}
+onClick={() => {
+  setIsHelpOpen(!isHelpOpen);
+  setHelpSection('main'); // Reset to main menu when closing
+}}
       className={`p-2 rounded-lg transition-colors ${
         isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
       }`}
@@ -1375,85 +1408,434 @@ const handleClearAllSounds = async () => {
   </div>
 </header>
 
-{/* Help Menu */}
-{isHelpOpen && (
-  <div 
-    id="help-menu"
-    className={`absolute right-20 top-20 z-50 w-80 rounded-xl shadow-2xl border overflow-hidden ${
-      isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
-    }`}
-  >
-    {/* Tutorial */}
-    <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-      <button
-        onClick={() => {
-          alert('📚 Tutorial\n\nThis feature is coming soon!\n\nIt will include:\n• Creating alarms\n• Custom sounds\n• Volume control\n• Export/Import\n\nFor now, the app is designed to be self-explanatory.');
-          setIsHelpOpen(false);
-        }}
-        className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
-          isDarkMode 
-            ? "bg-slate-700 hover:bg-slate-600 text-white" 
-            : "bg-gray-100 hover:bg-gray-200 text-slate-900"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">📚</span>
-          <div>
-            <p className="font-semibold">Tutorial</p>
-            <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Learn how to use the app</p>
-          </div>
+{/* PWA Install Banner */}
+{showInstallPrompt && (
+  <div className={`fixed bottom-24 left-4 right-4 z-40 p-4 rounded-xl shadow-2xl border ${
+    isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
+  }`}>
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <span className="text-2xl">📱</span>
+        <div>
+          <p className="font-semibold text-sm">Install Sound Scheduler</p>
+          <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+            Add to home screen for quick access
+          </p>
         </div>
-      </button>
-    </div>
-
-    {/* About */}
-    <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-      <button
-        onClick={() => {
-          alert(`🔔 Sound Scheduler v${APP_VERSION}\n\nSchedule sounds to play automatically at specific times and days.\n\n✨ Features:\n• Multiple alarms with custom schedules\n• 6 built-in sounds + custom audio\n• Volume control (0-10)\n• 5 color themes\n• Dark/Light mode\n• Export/Import backup\n• Browser notifications\n\n💾 Storage: All data stored locally in your browser\n\n🔒 Privacy: No account required, no data sent to servers\n\n🛠️ Tech: Next.js, Tailwind CSS, Web Audio API\n\n📅 Created: 2025`);
-          setIsHelpOpen(false);
-        }}
-        className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
-          isDarkMode 
-            ? "bg-slate-700 hover:bg-slate-600 text-white" 
-            : "bg-gray-100 hover:bg-gray-200 text-slate-900"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">ℹ️</span>
-          <div>
-            <p className="font-semibold">About</p>
-            <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>App information & version</p>
-          </div>
-        </div>
-      </button>
-    </div>
-
-    {/* Contact Support */}
-    <div className={`p-4 ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
-      <button
-        onClick={() => {
-          alert(`📞 Contact Support\n\nNeed help? Here are your options:\n\n1️⃣ FAQ (Common Questions):\n• Why didn't my alarm play? → Check volume & days\n• How do I upload sounds? → Use Custom Sound → File\n• Why is alarm dimmed? → Already played today\n• How do I backup? → Menu → Export Data\n\n2️⃣ Email Support:\nSend questions to: support@example.com\n\n3️⃣ Report a Bug:\nVisit GitHub Issues page\n\n💡 Tip: Most issues are solved by refreshing the page!`);
-          setIsHelpOpen(false);
-        }}
-        className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
-          isDarkMode 
-            ? "bg-slate-700 hover:bg-slate-600 text-white" 
-            : "bg-gray-100 hover:bg-gray-200 text-slate-900"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">📞</span>
-          <div>
-            <p className="font-semibold">Contact Support</p>
-            <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>FAQ, Email, Bug Reports</p>
-          </div>
-        </div>
-      </button>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowInstallPrompt(false)}
+          className={`p-2 rounded-lg ${
+            isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-200"
+          }`}
+        >
+          ✕
+        </button>
+        <button
+          onClick={handleInstallClick}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            isDarkMode ? "bg-cyan-600 hover:bg-cyan-500 text-white" : "bg-cyan-500 hover:bg-cyan-400 text-white"
+          }`}
+        >
+          Install
+        </button>
+      </div>
     </div>
   </div>
 )}
 
+
+{/* Help Menu */}
+{/* Help Menu */}
+{isHelpOpen && (
+  <div 
+    id="help-menu"
+    className={`absolute right-20 top-20 z-50 w-96 max-h-[80vh] overflow-y-auto rounded-xl shadow-2xl border overflow-hidden ${
+      isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
+    }`}
+  >
+    {/* Back Button (when in sub-section) */}
+    {helpSection !== 'main' && (
+      <button
+        onClick={() => setHelpSection('main')}
+        className={`w-full px-4 py-3 flex items-center gap-2 border-b transition-colors ${
+          isDarkMode 
+            ? "bg-slate-700 hover:bg-slate-600 border-slate-600 text-white" 
+            : "bg-gray-100 hover:bg-gray-200 border-gray-200 text-slate-900"
+        }`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        <span className="font-medium">Back</span>
+      </button>
+    )}
+
+    {/* MAIN MENU */}
+    {helpSection === 'main' && (
+      <>
+        {/* Tutorial */}
+        <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+          <button
+            onClick={() => setHelpSection('tutorial')}
+            className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
+              isDarkMode 
+                ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📚</span>
+              <div>
+                <p className="font-semibold">Tutorial</p>
+                <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Step-by-step guide</p>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* FAQ */}
+        <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+          <button
+            onClick={() => setHelpSection('faq')}
+            className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
+              isDarkMode 
+                ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">❓</span>
+              <div>
+                <p className="font-semibold">FAQ</p>
+                <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Common questions</p>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* About */}
+        <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+          <button
+            onClick={() => setHelpSection('about')}
+            className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
+              isDarkMode 
+                ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">ℹ️</span>
+              <div>
+                <p className="font-semibold">About</p>
+                <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>App info & version</p>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* Contact Support */}
+        <div className={`p-4 ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+          <button
+            onClick={() => setHelpSection('contact')}
+            className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
+              isDarkMode 
+                ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📞</span>
+              <div>
+                <p className="font-semibold">Contact Support</p>
+                <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Get help</p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </>
+    )}
+
+    {/* TUTORIAL SECTION */}
+    {helpSection === 'tutorial' && (
+      <div className="p-4 space-y-4">
+        <h3 className="font-bold text-lg">📚 Quick Start Guide</h3>
+        
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">1️⃣ Create Your First Alarm</p>
+          <ol className={`text-sm space-y-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            <li>• Tap the <strong className="text-cyan-500">+</strong> button (bottom right)</li>
+            <li>• Set time using the dropdowns</li>
+            <li>• Select days (MON-SUN) or leave empty to disable</li>
+            <li>• Choose a sound or upload your own</li>
+            <li>• Adjust volume (0 = muted, 10 = max)</li>
+            <li>• Tap <strong>"Save Alarm"</strong></li>
+          </ol>
+        </div>
+
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">2️⃣ Custom Sounds</p>
+          <ol className={`text-sm space-y-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            <li>• Select <strong>"🎵 Custom Sound"</strong></li>
+            <li>• Choose <strong>URL</strong> for online files (Google Drive, Dropbox)</li>
+            <li>• Or choose <strong>File</strong> to upload from your device (max 10MB)</li>
+            <li>• Tap <strong>🔊 Test Sound</strong> to preview</li>
+            <li>• Saved sounds are stored in your browser</li>
+          </ol>
+        </div>
+
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">3️⃣ Alarm Status</p>
+          <ul className={`text-sm space-y-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            <li>• <strong className="text-green-500">Bright</strong> = Active, ready to play</li>
+            <li>• <strong className="opacity-50">Dimmed</strong> = Already played today</li>
+            <li>• <strong className="text-red-500">Red badge</strong> = Muted or disabled</li>
+            <li>• <strong className="text-yellow-500">⏳ Waiting</strong> = Queued (another alarm playing)</li>
+          </ul>
+        </div>
+
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">4️⃣ Backup Your Data</p>
+          <ol className={`text-sm space-y-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            <li>• Tap ☰ menu (top right)</li>
+            <li>• Scroll to <strong>"💾 Backup & Restore"</strong></li>
+            <li>• Tap <strong>"📤 Export Data"</strong> to download backup</li>
+            <li>• Save the file somewhere safe</li>
+            <li>• Use <strong>"📥 Import Data"</strong> to restore later</li>
+          </ol>
+        </div>
+
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">💡 Pro Tips</p>
+          <ul className={`text-sm space-y-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            <li>• Use <strong>Clone</strong> (📋) to duplicate similar alarms</li>
+            <li>• <strong>Interrupt Previous</strong> stops current audio to play this one</li>
+            <li>• Volume = 0 mutes the alarm (it won't play)</li>
+            <li>• Leave days empty to disable an alarm temporarily</li>
+            <li>• Alarms reset at midnight each day</li>
+          </ul>
+        </div>
+      </div>
+    )}
+
+    {/* FAQ SECTION */}
+    {helpSection === 'faq' && (
+      <div className="p-4 space-y-4">
+        <h3 className="font-bold text-lg">❓ Frequently Asked Questions</h3>
+        
+        <details className={`p-3 rounded-lg cursor-pointer ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <summary className="font-semibold">Why didn't my alarm play?</summary>
+          <p className={`mt-2 text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            Check these common issues:<br/>
+            • Volume is set to 0 (muted)<br/>
+            • Alarm is disabled (toggle is off)<br/>
+            • No days selected (alarm is inactive)<br/>
+            • Browser tab was closed at alarm time<br/>
+            • Custom sound file/URL is broken
+          </p>
+        </details>
+
+        <details className={`p-3 rounded-lg cursor-pointer ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <summary className="font-semibold">How do I upload custom sounds?</summary>
+          <p className={`mt-2 text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            1. Create/edit an alarm<br/>
+            2. Select "🎵 Custom Sound"<br/>
+            3. Choose "File (Local)" tab<br/>
+            4. Click to select MP3/WAV file (max 10MB)<br/>
+            5. Tap "🔊 Test Sound" to preview<br/>
+            6. Save the alarm
+          </p>
+        </details>
+
+        <details className={`p-3 rounded-lg cursor-pointer ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <summary className="font-semibold">Why is my alarm dimmed/grayed out?</summary>
+          <p className={`mt-2 text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            Dimmed means the alarm already played today! ✅<br/><br/>
+            • Alarms reset at midnight each day<br/>
+            • Edit the alarm to reset it immediately<br/>
+            • Or wait until tomorrow for it to auto-reset
+          </p>
+        </details>
+
+        <details className={`p-3 rounded-lg cursor-pointer ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <summary className="font-semibold">How do I backup my alarms?</summary>
+          <p className={`mt-2 text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            1. Tap ☰ menu (top right)<br/>
+            2. Scroll to "💾 Backup & Restore"<br/>
+            3. Tap "📤 Export Data"<br/>
+            4. Save the JSON file somewhere safe<br/><br/>
+            To restore: Use "📥 Import Data" and select your backup file.
+          </p>
+        </details>
+
+        <details className={`p-3 rounded-lg cursor-pointer ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <summary className="font-semibold">Can I use this offline?</summary>
+          <p className={`mt-2 text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            ✅ Yes! All data is stored in your browser.<br/><br/>
+            • Alarms work even without internet<br/>
+            • Custom sounds uploaded from your device work offline<br/>
+            • URL-based sounds require internet to load<br/>
+            • Install as PWA for best offline experience
+          </p>
+        </details>
+
+        <details className={`p-3 rounded-lg cursor-pointer ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <summary className="font-semibold">What happens at midnight?</summary>
+          <p className={`mt-2 text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            All alarms automatically reset their "played" status at 12:00 AM.<br/><br/>
+            • Dimmed alarms become bright again<br/>
+            • They can play again on their scheduled days<br/>
+            • No action needed from you!
+          </p>
+        </details>
+      </div>
+    )}
+
+    {/* ABOUT SECTION */}
+    {helpSection === 'about' && (
+      <div className="p-4 space-y-4">
+        <h3 className="font-bold text-lg">ℹ️ About Sound Scheduler</h3>
+        
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold">Version {APP_VERSION}</p>
+          <p className={`text-sm ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+            Last updated: {new Date().toLocaleDateString()}
+          </p>
+        </div>
+
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">✨ Features</p>
+          <ul className={`text-sm space-y-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            <li>• Multiple alarms with custom schedules</li>
+            <li>• 6 built-in sounds + custom audio support</li>
+            <li>• Volume control (0-10) with mute option</li>
+            <li>• 5 beautiful color themes</li>
+            <li>• Dark/Light mode toggle</li>
+            <li>• Export/Import backup functionality</li>
+            <li>• Browser notifications</li>
+            <li>• Interrupt or queue overlapping alarms</li>
+            <li>• Mobile-friendly responsive design</li>
+            <li>• Installable as PWA (native app experience)</li>
+          </ul>
+        </div>
+
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">🔒 Privacy & Storage</p>
+          <ul className={`text-sm space-y-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            <li>• All data stored locally in your browser</li>
+            <li>• No account required</li>
+            <li>• No data sent to servers (except analytics)</li>
+            <li>• Custom sounds stored in IndexedDB (up to 50MB)</li>
+            <li>• Export your data anytime for backup</li>
+          </ul>
+        </div>
+
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">🛠️ Technology</p>
+          <p className={`text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            Built with Next.js 14, React, Tailwind CSS, and Web Audio API<br/>
+            Hosted on Vercel with automatic HTTPS
+          </p>
+        </div>
+
+        <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+          <p className="font-semibold mb-2">📄 License</p>
+          <p className={`text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+            Open Source (MIT License)<br/>
+            Free to use, modify, and distribute
+          </p>
+        </div>
+      </div>
+    )}
+
+{/* CONTACT SUPPORT SECTION */}
+{helpSection === 'contact' && (
+  <div className="p-4 space-y-4">
+    <h3 className="font-bold text-lg">📞 Get Help & Suggest Features</h3>
+    
+    <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+      <p className="font-semibold mb-2">🔍 Before Reaching Out</p>
+      <p className={`text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+        Most issues can be fixed by:<br/>
+        • Refreshing the page<br/>
+        • Checking your volume settings<br/>
+        • Ensuring days are selected for the alarm<br/>
+        • Clearing browser cache if sounds won't load<br/>
+        • Reading the <button onClick={() => setHelpSection('faq')} className="text-cyan-500 hover:underline">FAQ</button> section
+      </p>
+    </div>
+
+    <div className={`p-3 rounded-lg border-2 ${
+      isDarkMode ? "border-cyan-600 bg-cyan-900/20" : "border-cyan-400 bg-cyan-50"
+    }`}>
+      <p className="font-semibold mb-2">🐛 Bugs & 💡 Feature Requests</p>
+      <p className={`text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+        This is a free, open-source app! We'd love your help making it better.<br/><br/>
+        <strong>Visit our GitHub page to:</strong><br/>
+        • 🐛 Report a bug<br/>
+        • 💡 Suggest a new feature<br/>
+        • 💬 Ask a question<br/>
+        • ⭐ Star the repo if you like it!<br/><br/>
+        <a 
+          href="https://github.com/mo-robert-bhimji/sound-scheduler/issues" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            isDarkMode 
+              ? "bg-cyan-600 hover:bg-cyan-500 text-white" 
+              : "bg-cyan-500 hover:bg-cyan-400 text-white"
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          Visit GitHub Issues
+        </a>
+      </p>
+    </div>
+
+    <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+      <p className="font-semibold mb-2">💬 Community Discussions</p>
+      <p className={`text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+        Want to chat about ideas or see what others are building?<br/><br/>
+        <a 
+          href="https://github.com/mo-robert-bhimji/sound-scheduler/discussions" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-cyan-500 hover:underline"
+        >
+          github.com/mo-robert-bhimji/sound-scheduler/discussions
+        </a>
+      </p>
+    </div>
+
+    <div className={`p-3 rounded-lg ${isDarkMode ? "bg-slate-700" : "bg-gray-100"}`}>
+      <p className="font-semibold mb-2">📄 Documentation</p>
+      <p className={`text-sm ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+        Learn more about the app, how it works, and how to contribute:<br/><br/>
+        <a 
+          href="https://github.com/mo-robert-bhimji/sound-scheduler#readme" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-cyan-500 hover:underline"
+        >
+          github.com/mo-robert-bhimji/sound-scheduler
+        </a>
+      </p>
+    </div>
+
+    <div className={`p-3 rounded-lg border-2 ${
+      isDarkMode ? "border-yellow-600 bg-yellow-900/20" : "border-yellow-400 bg-yellow-50"
+    }`}>
+      <p className={`text-sm font-medium ${isDarkMode ? "text-yellow-400" : "text-yellow-600"}`}>
+        💡 Pro Tip: Search existing issues before creating a new one – your idea might already be discussed!
+      </p>
+    </div>
+  </div>
+)}
+  </div>
+)}
       {isMenuOpen && (
         <div 
           id="main-menu"
