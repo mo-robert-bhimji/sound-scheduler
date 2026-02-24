@@ -94,6 +94,7 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [colorScheme, setColorScheme] = useState<ColorScheme>("ocean");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<{
     id: number; 
@@ -232,21 +233,31 @@ const [storageUsage, setStorageUsage] = useState<{
     localStorage.setItem('sound-scheduler-color-scheme', colorScheme);
   }, [colorScheme]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const menu = document.getElementById('main-menu');
-      const button = document.getElementById('menu-button');
-      if (menu && !menu.contains(event.target as Node) && 
-          button && !button.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    };
+ useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    const menu = document.getElementById('main-menu');
+    const button = document.getElementById('menu-button');
+    const helpMenu = document.getElementById('help-menu');
+    const helpButton = document.getElementById('help-button');
     
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+    // Close main menu
+    if (menu && !menu.contains(event.target as Node) && 
+        button && !button.contains(event.target as Node)) {
+      setIsMenuOpen(false);
     }
-  }, [isMenuOpen]);
+    
+    // Close help menu
+    if (helpMenu && !helpMenu.contains(event.target as Node) && 
+        helpButton && !helpButton.contains(event.target as Node)) {
+      setIsHelpOpen(false);
+    }
+  };
+  
+  if (isMenuOpen || isHelpOpen) {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }
+}, [isMenuOpen, isHelpOpen]);
 
   useEffect(() => {
     const resetPlayedStatus = () => {
@@ -863,7 +874,7 @@ if (storageUsage && storageUsage.percentUsed > 90) {
       allAlarmsEnabled,
       customSounds: soundsData,
       exportDate: new Date().toISOString(),
-      version: '1.1.21'
+      version: '1.2.01'
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1272,24 +1283,120 @@ const handleDeleteAlarm = async (id: number) => {
       isDarkMode ? "bg-slate-900 text-white" : "bg-gray-100 text-slate-900"
     }`}>
       
-      <header className={`p-6 border-b flex justify-between items-center ${
-        isDarkMode ? "border-slate-700" : "border-gray-300"
-      }`}>
-        <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.1.21</span></h1>
-        
-        <button
-          id="menu-button"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className={`p-2 rounded-lg transition-colors ${
-            isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
-          }`}
-          title="Menu"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      </header>
+ <header className={`p-6 border-b flex justify-between items-center ${
+  isDarkMode ? "border-slate-700" : "border-gray-300"
+}`}>
+  <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.2.01</span></h1>
+  
+  <div className="flex gap-2">
+    {/* Help Button - NEW */}
+    <button
+      id="help-button"
+      onClick={() => setIsHelpOpen(!isHelpOpen)}
+      className={`p-2 rounded-lg transition-colors ${
+        isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
+      }`}
+      title="Help"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </button>
+    
+    {/* Hamburger Menu Button */}
+    <button
+      id="menu-button"
+      onClick={() => setIsMenuOpen(!isMenuOpen)}
+      className={`p-2 rounded-lg transition-colors ${
+        isDarkMode ? "hover:bg-slate-800" : "hover:bg-gray-200"
+      }`}
+      title="Menu"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </div>
+</header>
+
+{/* Help Menu */}
+{isHelpOpen && (
+  <div 
+    id="help-menu"
+    className={`absolute right-20 top-20 z-50 w-80 rounded-xl shadow-2xl border overflow-hidden ${
+      isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
+    }`}
+  >
+    {/* Tutorial */}
+    <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+      <button
+        onClick={() => {
+          alert('📚 Tutorial\n\nThis feature is coming soon!\n\nIt will include:\n• Creating alarms\n• Custom sounds\n• Volume control\n• Export/Import\n\nFor now, the app is designed to be self-explanatory.');
+          setIsHelpOpen(false);
+        }}
+        className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
+          isDarkMode 
+            ? "bg-slate-700 hover:bg-slate-600 text-white" 
+            : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">📚</span>
+          <div>
+            <p className="font-semibold">Tutorial</p>
+            <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>Learn how to use the app</p>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    {/* About */}
+    <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+      <button
+        onClick={() => {
+          alert(`🔔 Sound Scheduler v1.2.01\n\nSchedule sounds to play automatically at specific times and days.\n\n✨ Features:\n• Multiple alarms with custom schedules\n• 6 built-in sounds + custom audio\n• Volume control (0-10)\n• 5 color themes\n• Dark/Light mode\n• Export/Import backup\n• Browser notifications\n\n💾 Storage: All data stored locally in your browser\n\n🔒 Privacy: No account required, no data sent to servers\n\n🛠️ Tech: Next.js, Tailwind CSS, Web Audio API\n\n📅 Created: 2025`);
+          setIsHelpOpen(false);
+        }}
+        className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
+          isDarkMode 
+            ? "bg-slate-700 hover:bg-slate-600 text-white" 
+            : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">ℹ️</span>
+          <div>
+            <p className="font-semibold">About</p>
+            <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>App information & version</p>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    {/* Contact Support */}
+    <div className={`p-4 ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
+      <button
+        onClick={() => {
+          alert(`📞 Contact Support\n\nNeed help? Here are your options:\n\n1️⃣ FAQ (Common Questions):\n• Why didn't my alarm play? → Check volume & days\n• How do I upload sounds? → Use Custom Sound → File\n• Why is alarm dimmed? → Already played today\n• How do I backup? → Menu → Export Data\n\n2️⃣ Email Support:\nSend questions to: support@example.com\n\n3️⃣ Report a Bug:\nVisit GitHub Issues page\n\n💡 Tip: Most issues are solved by refreshing the page!`);
+          setIsHelpOpen(false);
+        }}
+        className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
+          isDarkMode 
+            ? "bg-slate-700 hover:bg-slate-600 text-white" 
+            : "bg-gray-100 hover:bg-gray-200 text-slate-900"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">📞</span>
+          <div>
+            <p className="font-semibold">Contact Support</p>
+            <p className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>FAQ, Email, Bug Reports</p>
+          </div>
+        </div>
+      </button>
+    </div>
+  </div>
+)}
 
       {isMenuOpen && (
         <div 
