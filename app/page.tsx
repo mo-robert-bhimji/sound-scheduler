@@ -7,7 +7,7 @@ import { Analytics } from "@vercel/analytics/next"
 // ============================================================================
 // APP CONFIGURATION - Update version here only!
 // ============================================================================
-const APP_VERSION = "1.2.10";
+const APP_VERSION = "1.2.11";
 
 // Color schemes
 type ColorScheme = "ocean" | "forest" | "violet" | "sunset" | "slate";
@@ -2440,348 +2440,391 @@ onClick={() => {
         </div>
       )}
 
-      {isModalOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => {
-            stopAllSounds();
-            setIsModalOpen(false);
-          }}
-        >
-          <div 
-            className={`w-full max-w-md rounded-xl p-6 shadow-2xl transition-colors ${
-              isDarkMode ? "bg-slate-800 text-white" : "bg-white text-slate-900"
-            }`}
-            onClick={(e) => e.stopPropagation()}
+  {isModalOpen && (
+  <div 
+    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+    onClick={() => {
+      stopAllSounds();
+      setIsModalOpen(false);
+    }}
+  >
+    <div 
+      className={`w-full rounded-xl shadow-2xl transition-colors overflow-hidden ${
+        isMobile 
+          ? 'fixed inset-x-0 bottom-0 top-20 rounded-t-xl' 
+          : 'max-w-md'
+      } ${isDarkMode ? "bg-slate-800 text-white" : "bg-white text-slate-900"}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Mobile Header with Close Button */}
+      {isMobile && (
+        <div className={`p-4 border-b flex justify-between items-center sticky top-0 z-10 ${
+          isDarkMode ? "border-slate-700 bg-slate-800" : "border-gray-200 bg-white"
+        }`}>
+          <h2 className="text-xl font-bold">
+            {editingAlarm ? "Edit Alarm" : "Add New Alarm"}
+          </h2>
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className={`p-2 rounded-lg ${isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-200"}`}
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Scrollable Content */}
+      <div className={isMobile ? 'overflow-y-auto max-h-[calc(100vh-220px)]' : 'max-h-[70vh] overflow-y-auto'}>
+        <div className="p-6 space-y-4">
+          {/* Desktop Title (hidden on mobile) */}
+          {!isMobile && (
             <h2 className="text-xl font-bold mb-4">
               {editingAlarm ? "Edit Alarm" : "Add New Alarm"}
             </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Time</label>
-                <div className="flex gap-2">
-                  <select
-                    value={selectedHour}
-                    onChange={(e) => setSelectedHour(e.target.value)}
-                    className={`flex-1 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-300"
-                    }`}
-                  >
-                    {hours.map((h) => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                  
-                  <select
-                    value={selectedMinute}
-                    onChange={(e) => setSelectedMinute(e.target.value)}
-                    className={`flex-1 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-300"
-                    }`}
-                  >
-                    {minutes.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setIsPM(!isPM)}
-                    className={`flex-1 p-3 rounded-lg font-bold transition-all ${
-                      isPM 
-                        ? `${theme.buttonBg} ${theme.buttonText} shadow-lg`
-                        : isDarkMode 
-                          ? "bg-slate-700 text-slate-300 border border-slate-600" 
-                          : "bg-gray-100 text-gray-600 border border-gray-300"
-                    }`}
-                  >
-                    {isPM ? "PM" : "AM"}
-                  </button>
-                </div>
-              </div>
-              
-              {timeConflict && (
-                <div className={`p-3 rounded-lg border ${
-                  isDarkMode ? "bg-yellow-900/30 border-yellow-600 text-yellow-400" : "bg-yellow-50 border-yellow-400 text-yellow-700"
-                }`}>
-                  <p className="text-sm font-medium">⚠️ {timeConflict}</p>
-                  <p className="text-xs mt-1 opacity-70">This alarm will be added to the pending queue if both are active</p>
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Days</label>
-                <div className="grid grid-cols-7 gap-1">
-                  {DAYS.map((day) => {
-                    const isSelected = selectedDays.includes(day);
-                    return (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => toggleDay(day)}
-                        className={`p-2 rounded-lg text-xs font-bold transition-all ${
-                          isSelected
-                            ? `${theme.buttonBg} ${theme.buttonText} shadow-lg`
-                            : isDarkMode
-                              ? "bg-slate-700 text-slate-400 hover:bg-slate-600"
-                              : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                        }`}
-                      >
-                        {day}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className={`text-xs mt-1 italic ${
-                  isDarkMode ? "text-slate-500" : "text-gray-400"
-                }`}>
-                  Leave unselected to disable alarm
-                </p>
-              </div>
-              
-              <div className={`p-4 rounded-lg border-2 ${
-                interruptPrevious
-                  ? isDarkMode ? "bg-red-900/20 border-red-600" : "bg-red-50 border-red-400"
-                  : isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-300"
-              }`}>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <div className={`w-12 h-6 rounded-full transition-colors relative ${
-                    interruptPrevious ? "bg-red-500" : "bg-slate-500"
-                  }`}>
-                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                      interruptPrevious ? "left-7" : "left-1"
-                    }`}></div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="hidden"
-                    checked={interruptPrevious}
-                    onChange={(e) => setInterruptPrevious(e.target.checked)}
-                  />
-                  <div>
-                    <p className="font-medium">Interrupt Previous Audio ⚡</p>
-                    <p className={`text-xs ${
-                      isDarkMode ? "text-slate-400" : "text-gray-500"
-                    }`}>
-                      {interruptPrevious 
-                        ? "Stop any playing audio and start this" 
-                        : "Wait for current audio to finish (or play first if nothing is playing)"}
-                    </p>
-                  </div>
-                </label>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Volume: {volume}/10 ({getVolumeLabel(volume)}) {getVolumeIcon(volume)}
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="1"
-                  value={volume}
-                  onChange={(e) => setVolume(parseInt(e.target.value))}
-                  className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
-                    isDarkMode ? "bg-slate-700" : "bg-gray-300"
+          )}
+          
+          <div className="space-y-4">
+            {/* Time */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Time</label>
+              <div className="flex gap-2">
+                <select
+                  value={selectedHour}
+                  onChange={(e) => setSelectedHour(e.target.value)}
+                  className={`flex-1 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-300"
                   }`}
-                  style={{
-                    background: `linear-gradient(to right, ${
-                      volume === 0 ? '#ef4444' :
-                      volume <= 3 ? '#eab308' :
-                      volume <= 6 ? '#06b6d4' : '#22c55e'
-                    } 0%, ${
-                      volume === 0 ? '#ef4444' :
-                      volume <= 3 ? '#eab308' :
-                      volume <= 6 ? '#06b6d4' : '#22c55e'
-                    } ${(volume / 10) * 100}%, ${
-                      isDarkMode ? '#334155' : '#d1d5db'
-                    } ${(volume / 10) * 100}%, ${
-                      isDarkMode ? '#334155' : '#d1d5db'
-                    } 100%)`
-                  }}
-                />
-                <div className="flex justify-between text-xs mt-1">
-                  <span className="text-red-500">0 (Muted)</span>
-                  <span className="text-yellow-500">3 (Low)</span>
-                  <span className="text-cyan-500">5 (Medium)</span>
-                  <span className="text-green-500">10 (Max)</span>
-                </div>
-                {volume === 0 && (
-                  <p className="text-xs text-red-500 mt-1">⚠️ Volume 0 will mute this alarm (it won't play)</p>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Sound</label>
-                <div className="flex gap-2 mb-3">
-                  <select
-                    value={selectedSoundId}
-                    onChange={(e) => {
-                      const sound = getSoundById(e.target.value);
-                      setSelectedSoundId(e.target.value);
-                      setNewAlarmSound(sound.name);
-                    }}
-                    className={`flex-1 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-300"
-                    }`}
-                  >
-                    {SOUND_OPTIONS.map((sound) => (
-                      <option key={sound.id} value={sound.id}>{sound.name}</option>
-                    ))}
-                  </select>
-                  
-                  <button
-                    type="button"
-                    onClick={handlePreviewSound}
-                    disabled={selectedSoundId === "custom" && !customSoundUrl}
-                    className={`p-3 rounded-lg transition-colors ${
-                      playingSoundId === selectedSoundId
-                        ? "bg-red-500 text-white"
-                        : isDarkMode
-                          ? "bg-slate-700 hover:bg-slate-600 text-green-400"
-                          : "bg-gray-200 hover:bg-gray-300 text-green-600"
-                    }`}
-                    title={playingSoundId === selectedSoundId ? "Stop preview" : "Preview sound"}
-                  >
-                    {playingSoundId === selectedSoundId ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                        <rect x="6" y="4" width="4" height="16"/>
-                        <rect x="14" y="4" width="4" height="16"/>
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    )}
-                  </button>
-                </div>
+                >
+                  {hours.map((h) => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
                 
-                {selectedSoundId === "custom" && (
-                  <div className={`p-4 rounded-lg border-2 ${
-                    isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-300"
-                  }`}>
-                    <div className="flex gap-2 mb-3">
-                      <button
-                        type="button"
-                        onClick={() => setCustomSoundType("url")}
-                        className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${
-                          customSoundType === "url"
-                            ? "bg-cyan-500 text-white"
-                            : isDarkMode
-                              ? "bg-slate-600 text-slate-300"
-                              : "bg-gray-200 text-gray-700"
-                        }`}
-                      >
-                        🔗 URL (Online)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCustomSoundType("file")}
-                        className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${
-                          customSoundType === "file"
-                            ? "bg-cyan-500 text-white"
-                            : isDarkMode
-                              ? "bg-slate-600 text-slate-300"
-                              : "bg-gray-200 text-gray-700"
-                        }`}
-                      >
-                        📁 File (Local)
-                      </button>
-                    </div>
-                    
-                    {customSoundType === "url" && (
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Sound URL (MP3/WAV)</label>
-                        <input
-                          type="url"
-                          value={customSoundUrl}
-                          onChange={(e) => setCustomSoundUrl(e.target.value)}
-                          placeholder="https://example.com/sound.mp3"
-                          className={`w-full p-3 rounded border outline-none focus:ring-2 focus:ring-cyan-500 ${
-                            isDarkMode ? "bg-slate-700 border-slate-600" : "bg-white border-gray-300"
-                          }`}
-                        />
-                        <p className={`text-xs mt-2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
-                          💡 Tip: Upload your audio to Google Drive, Dropbox, or any file hosting service
-                        </p>
-                      </div>
-                    )}
-                    
-                    {customSoundType === "file" && (
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Upload Audio File (MP3/WAV)</label>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="audio/*"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className={`w-full p-3 rounded border-2 border-dashed transition-colors ${
-                            isDarkMode 
-                              ? "border-slate-600 hover:border-slate-500 text-slate-300" 
-                              : "border-gray-300 hover:border-gray-400 text-gray-700"
-                          }`}
-                        >
-                          {customFileName || (customSoundUrl.startsWith('sound_') ? '✅ File saved in IndexedDB' : '📁 Click to select file')}
-                        </button>
-                        <p className={`text-xs mt-2 ${isDarkMode ? "text-yellow-400" : "text-yellow-600"}`}>
-                          ⚠️ Files are stored in IndexedDB (up to 10MB)
-                        </p>
-                        <p className={`text-xs mt-1 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
-                          💡 For larger files, use the URL option instead
-                        </p>
-                      </div>
-                    )}
-                    
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (customSoundUrl) {
-                          handleTestSound("custom", customSoundUrl, volume / 10);
-                        } else {
-                          alert('⚠️ Please enter a URL or select a file first');
-                        }
-                      }}
-                      className={`w-full mt-3 px-4 py-2 rounded-lg font-medium ${
-                        isDarkMode ? "bg-cyan-600 hover:bg-cyan-500" : "bg-cyan-500 hover:bg-cyan-400"
-                      } text-white`}
-                    >
-                      🔊 Test Sound
-                    </button>
-                  </div>
-                )}
+                <select
+                  value={selectedMinute}
+                  onChange={(e) => setSelectedMinute(e.target.value)}
+                  className={`flex-1 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-300"
+                  }`}
+                >
+                  {minutes.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                
+                <button
+                  type="button"
+                  onClick={() => setIsPM(!isPM)}
+                  className={`flex-1 p-3 rounded-lg font-bold transition-all ${
+                    isPM 
+                      ? `${theme.buttonBg} ${theme.buttonText} shadow-lg`
+                      : isDarkMode 
+                        ? "bg-slate-700 text-slate-300 border border-slate-600" 
+                        : "bg-gray-100 text-gray-600 border border-gray-300"
+                  }`}
+                >
+                  {isPM ? "PM" : "AM"}
+                </button>
               </div>
             </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button 
-                onClick={() => {
-                  stopAllSounds();
-                  setIsModalOpen(false);
-                }}
-                className={`px-4 py-2 rounded-lg font-medium ${
-                  isDarkMode ? "bg-slate-700 hover:bg-slate-600" : "bg-gray-200 hover:bg-gray-300"
+            
+            {/* Time Conflict Warning */}
+            {timeConflict && (
+              <div className={`p-3 rounded-lg border ${
+                isDarkMode ? "bg-yellow-900/30 border-yellow-600 text-yellow-400" : "bg-yellow-50 border-yellow-400 text-yellow-700"
+              }`}>
+                <p className="text-sm font-medium">⚠️ {timeConflict}</p>
+                <p className="text-xs mt-1 opacity-70">This alarm will be added to the pending queue if both are active</p>
+              </div>
+            )}
+            
+            {/* Days */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Days</label>
+              <div className="grid grid-cols-7 gap-1">
+                {DAYS.map((day) => {
+                  const isSelected = selectedDays.includes(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleDay(day)}
+                      className={`p-2 rounded-lg text-xs font-bold transition-all ${
+                        isSelected
+                          ? `${theme.buttonBg} ${theme.buttonText} shadow-lg`
+                          : isDarkMode
+                            ? "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                            : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className={`text-xs mt-1 italic ${
+                isDarkMode ? "text-slate-500" : "text-gray-400"
+              }`}>
+                Leave unselected to disable alarm
+              </p>
+            </div>
+            
+            {/* Interrupt Previous Audio */}
+            <div className={`p-4 rounded-lg border-2 ${
+              interruptPrevious
+                ? isDarkMode ? "bg-red-900/20 border-red-600" : "bg-red-50 border-red-400"
+                : isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-300"
+            }`}>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className={`w-12 h-6 rounded-full transition-colors relative ${
+                  interruptPrevious ? "bg-red-500" : "bg-slate-500"
+                }`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                    interruptPrevious ? "left-7" : "left-1"
+                  }`}></div>
+                </div>
+                <input
+                  type="checkbox"
+                  className="hidden"
+                  checked={interruptPrevious}
+                  onChange={(e) => setInterruptPrevious(e.target.checked)}
+                />
+                <div>
+                  <p className="font-medium">Interrupt Previous Audio ⚡</p>
+                  <p className={`text-xs ${
+                    isDarkMode ? "text-slate-400" : "text-gray-500"
+                  }`}>
+                    {interruptPrevious 
+                      ? "Stop any playing audio and start this" 
+                      : "Wait for current audio to finish (or play first if nothing is playing)"}
+                  </p>
+                </div>
+              </label>
+            </div>
+            
+            {/* Volume */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Volume: {volume}/10 ({getVolumeLabel(volume)}) {getVolumeIcon(volume)}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="1"
+                value={volume}
+                onChange={(e) => setVolume(parseInt(e.target.value))}
+                className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
+                  isDarkMode ? "bg-slate-700" : "bg-gray-300"
                 }`}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSaveAlarm}
-                className={`px-4 py-2 rounded-lg font-medium ${theme.buttonBg} ${theme.buttonText} hover:opacity-90`}
-              >
-                {editingAlarm ? "Update Alarm" : "Save Alarm"}
-              </button>
+                style={{
+                  background: `linear-gradient(to right, ${
+                    volume === 0 ? '#ef4444' :
+                    volume <= 3 ? '#eab308' :
+                    volume <= 6 ? '#06b6d4' : '#22c55e'
+                  } 0%, ${
+                    volume === 0 ? '#ef4444' :
+                    volume <= 3 ? '#eab308' :
+                    volume <= 6 ? '#06b6d4' : '#22c55e'
+                  } ${(volume / 10) * 100}%, ${
+                    isDarkMode ? '#334155' : '#d1d5db'
+                  } ${(volume / 10) * 100}%, ${
+                    isDarkMode ? '#334155' : '#d1d5db'
+                  } 100%)`
+                }}
+              />
+              <div className="flex justify-between text-xs mt-1">
+                <span className="text-red-500">0 (Muted)</span>
+                <span className="text-yellow-500">3 (Low)</span>
+                <span className="text-cyan-500">5 (Medium)</span>
+                <span className="text-green-500">10 (Max)</span>
+              </div>
+              {volume === 0 && (
+                <p className="text-xs text-red-500 mt-1">⚠️ Volume 0 will mute this alarm (it won't play)</p>
+              )}
+            </div>
+            
+            {/* Sound */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Sound</label>
+              <div className="flex gap-2 mb-3">
+                <select
+                  value={selectedSoundId}
+                  onChange={(e) => {
+                    const sound = getSoundById(e.target.value);
+                    setSelectedSoundId(e.target.value);
+                    setNewAlarmSound(sound.name);
+                  }}
+                  className={`flex-1 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-300"
+                  }`}
+                >
+                  {SOUND_OPTIONS.map((sound) => (
+                    <option key={sound.id} value={sound.id}>{sound.name}</option>
+                  ))}
+                </select>
+                
+                <button
+                  type="button"
+                  onClick={handlePreviewSound}
+                  disabled={selectedSoundId === "custom" && !customSoundUrl}
+                  className={`p-3 rounded-lg transition-colors ${
+                    playingSoundId === selectedSoundId
+                      ? "bg-red-500 text-white"
+                      : isDarkMode
+                        ? "bg-slate-700 hover:bg-slate-600 text-green-400"
+                        : "bg-gray-200 hover:bg-gray-300 text-green-600"
+                  }`}
+                  title={playingSoundId === selectedSoundId ? "Stop preview" : "Preview sound"}
+                >
+                  {playingSoundId === selectedSoundId ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                      <rect x="6" y="4" width="4" height="16"/>
+                      <rect x="14" y="4" width="4" height="16"/>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+              
+              {/* Custom Sound Options */}
+              {selectedSoundId === "custom" && (
+                <div className={`p-4 rounded-lg border-2 ${
+                  isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-300"
+                }`}>
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setCustomSoundType("url")}
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                        customSoundType === "url"
+                          ? "bg-cyan-500 text-white"
+                          : isDarkMode
+                            ? "bg-slate-600 text-slate-300"
+                            : "bg-gray-200 text-gray-700"
+                      }`}
+                    >
+                      🔗 URL (Online)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomSoundType("file")}
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${
+                        customSoundType === "file"
+                          ? "bg-cyan-500 text-white"
+                          : isDarkMode
+                            ? "bg-slate-600 text-slate-300"
+                            : "bg-gray-200 text-gray-700"
+                      }`}
+                    >
+                      📁 File (Local)
+                    </button>
+                  </div>
+                  
+                  {customSoundType === "url" && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Sound URL (MP3/WAV)</label>
+                      <input
+                        type="url"
+                        value={customSoundUrl}
+                        onChange={(e) => setCustomSoundUrl(e.target.value)}
+                        placeholder="https://example.com/sound.mp3"
+                        className={`w-full p-3 rounded border outline-none focus:ring-2 focus:ring-cyan-500 ${
+                          isDarkMode ? "bg-slate-700 border-slate-600" : "bg-white border-gray-300"
+                        }`}
+                      />
+                      <p className={`text-xs mt-2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+                        💡 Tip: Upload your audio to Google Drive, Dropbox, or any file hosting service
+                      </p>
+                    </div>
+                  )}
+                  
+                  {customSoundType === "file" && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Upload Audio File (MP3/WAV)</label>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`w-full p-3 rounded border-2 border-dashed transition-colors ${
+                          isDarkMode 
+                            ? "border-slate-600 hover:border-slate-500 text-slate-300" 
+                            : "border-gray-300 hover:border-gray-400 text-gray-700"
+                        }`}
+                      >
+                        {customFileName || (customSoundUrl.startsWith('sound_') ? '✅ File saved in IndexedDB' : '📁 Click to select file')}
+                      </button>
+                      <p className={`text-xs mt-2 ${isDarkMode ? "text-yellow-400" : "text-yellow-600"}`}>
+                        ⚠️ Files are stored in IndexedDB (up to 10MB)
+                      </p>
+                      <p className={`text-xs mt-1 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+                        💡 For larger files, use the URL option instead
+                      </p>
+                    </div>
+                  )}
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customSoundUrl) {
+                        handleTestSound("custom", customSoundUrl, volume / 10);
+                      } else {
+                        alert('⚠️ Please enter a URL or select a file first');
+                      }
+                    }}
+                    className={`w-full mt-3 px-4 py-3 rounded-lg font-medium ${
+                      isDarkMode ? "bg-cyan-600 hover:bg-cyan-500" : "bg-cyan-500 hover:bg-cyan-400"
+                    } text-white`}
+                  >
+                    🔊 Test Sound
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Fixed Footer with Buttons */}
+      <div className={`p-4 border-t sticky bottom-0 ${
+        isDarkMode 
+          ? "border-slate-700 bg-slate-800" 
+          : "border-gray-200 bg-white"
+      }`}>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => {
+              stopAllSounds();
+              setIsModalOpen(false);
+            }}
+            className={`flex-1 px-4 py-3 rounded-lg font-medium ${
+              isDarkMode ? "bg-slate-700 hover:bg-slate-600" : "bg-gray-200 hover:bg-gray-300"
+            }`}
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSaveAlarm}
+            className={`flex-1 px-4 py-3 rounded-lg font-medium ${theme.buttonBg} ${theme.buttonText} hover:opacity-90`}
+          >
+            {editingAlarm ? "Update Alarm" : "Save Alarm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
