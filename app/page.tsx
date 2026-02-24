@@ -807,13 +807,36 @@ export default function Home() {
     );
   };
 
-  const handleExportData = () => {
+  const handleExportData = async () => {
+  try {
+    console.log('📤 Starting export...');
+    
+    // Get all custom sounds from IndexedDB
+    const { getAllSounds } = await import('./lib/db');
+    const allSounds = await getAllSounds();
+    
+    // Convert sounds to serializable format
+    const soundsData: Record<string, { name: string; createdAt: number; data: string }> = {};
+    
+    for (const sound of allSounds) {
+      // Convert Blob to base64 for JSON export
+      const base64 = await blobToBase64(sound.data);
+      soundsData[sound.id] = {
+        name: sound.name,
+        createdAt: sound.createdAt,
+        data: base64,
+      };
+    }
+    
+    console.log(`📦 Exporting ${alarms.length} alarms and ${allSounds.length} sounds`);
+    
     const data = {
       alarms,
       colorScheme,
       allAlarmsEnabled,
+      customSounds: soundsData,
       exportDate: new Date().toISOString(),
-      version: '1.1.17'
+      version: '1.2.0'
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -825,38 +848,96 @@ export default function Home() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
     
+    alert(`✅ Export successful!\n\n📊 ${alarms.length} alarms\n🎵 ${allSounds.length} custom sounds\n\nFile: ${a.download}`);
+    
+  } catch (error) {
+    console.error('❌ Export failed:', error);
+    alert('❌ Export failed. See console for details.');
+  }
+};
+
+// Helper function: Convert Blob to base64
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        
-        if (!data.alarms || !Array.isArray(data.alarms)) {
-          alert('❌ Invalid backup file format!');
-          return;
-        }
-        
-        if (confirm(`⚠️ This will replace your current data with:\n\n📅 ${data.exportDate || 'Unknown date'}\n🔔 ${data.alarms.length} alarms\n\nContinue?`)) {
-          setAlarms(data.alarms);
-          if (data.colorScheme) setColorScheme(data.colorScheme);
-          if (data.allAlarmsEnabled !== undefined) setAllAlarmsEnabled(data.allAlarmsEnabled);
-          localStorage.setItem('sound-scheduler-alarms', JSON.stringify(data.alarms));
-          alert('✅ Data imported successfully!');
-          setIsMenuOpen(false);
-        }
-      } catch (error) {
-        alert('❌ Error reading backup file. Make sure it\'s a valid JSON file.');
-        console.error(error);
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+const handleImportData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target?.result as string);
+      
+      if (!data.alarms || !Array.isArray(data.alarms)) {
+        alert('❌ Invalid backup file format!');
+        return;
       }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
+      
+      // Count what we're importing
+      const alarmCount = data.alarms.length;
+      const soundCount = data.customSounds ? Object.keys(data.customSounds).length : 0;
+      
+      const confirmed = confirm(
+        `⚠️ This will replace your current data with:\n\n` +
+        `📅 ${data.exportDate || 'Unknown date'}\n` +
+        `🔔 ${alarmCount} alarms\n` +
+        `🎵 ${soundCount} custom sounds\n\n` +
+        `Continue?`
+      );
+      
+      if (!confirmed) return;
+      
+      // Restore custom sounds to IndexedDB first
+      if (data.customSounds) {
+        console.log('📥 Restoring', soundCount, 'sounds to IndexedDB');
+        const { saveSound, clearAllSounds } = await import('./lib/db');
+        
+        // Clear existing sounds first
+        await clearAllSounds();
+        
+        // Restore each sound
+        for (const [soundId, soundData] of Object.entries(data.customSounds)) {
+          const { name, createdAt, data: base64Data } = soundData as any;
+          
+          // Convert base64 back to Blob
+          const blob = await base64ToBlob(base64Data);
+          await saveSound(soundId, blob, name);
+        }
+        
+        console.log('✅ Sounds restored successfully');
+      }
+      
+      // Restore alarms to localStorage
+      setAlarms(data.alarms);
+      if (data.colorScheme) setColorScheme(data.colorScheme);
+      if (data.allAlarmsEnabled !== undefined) setAllAlarmsEnabled(data.allAlarmsEnabled);
+      localStorage.setItem('sound-scheduler-alarms', JSON.stringify(data.alarms));
+      
+      alert(`✅ Import successful!\n\n🔔 ${alarmCount} alarms\n🎵 ${soundCount} sounds restored`);
+      setIsMenuOpen(false);
+      
+    } catch (error) {
+      console.error('❌ Import failed:', error);
+      alert('❌ Error reading backup file. Make sure it\'s a valid JSON file.');
+    }
   };
+  reader.readAsText(file);
+  event.target.value = '';
+};
+
+// Helper function: Convert base64 to Blob
+const base64ToBlob = async (base64: string): Promise<Blob> => {
+  const response = await fetch(base64);
+  return await response.blob();
+};
 
   const handleOpenNewAlarm = () => {
     setEditingAlarm(null);
@@ -956,12 +1037,32 @@ export default function Home() {
     alert(`✅ Alarm cloned!\n\n"${clonedAlarm.sound}" at ${clonedAlarm.time}\n\nEdit the duplicate or click Cancel to keep as-is.`);
   };
 
-  const handleDeleteAlarm = (id: number) => {
+const handleDeleteAlarm = async (id: number) => {
+  try {
+    // Find the alarm being deleted
+    const alarm = alarms.find(a => a.id === id);
+    
+    // If it has a custom sound, delete from IndexedDB
+    if (alarm?.customUrl && alarm.customUrl.startsWith('sound_')) {
+      console.log('🗑️ Deleting custom sound from IndexedDB:', alarm.customUrl);
+      const { deleteSound } = await import('./lib/db');
+      await deleteSound(alarm.customUrl);
+    }
+    
+    // Delete alarm from localStorage
     const updated = alarms.filter(alarm => alarm.id !== id);
     setAlarms(updated);
     localStorage.setItem('sound-scheduler-alarms', JSON.stringify(updated));
-  };
-
+    
+    console.log('✅ Alarm deleted successfully');
+  } catch (error) {
+    console.error('❌ Error deleting alarm:', error);
+    // Still delete the alarm even if sound deletion fails
+    const updated = alarms.filter(alarm => alarm.id !== id);
+    setAlarms(updated);
+    localStorage.setItem('sound-scheduler-alarms', JSON.stringify(updated));
+  }
+};
   const handleResetToDemo = () => {
     if (confirm("Reset to demo alarms? This will delete all current alarms.")) {
       setAlarms(DUMMY_DATA);
