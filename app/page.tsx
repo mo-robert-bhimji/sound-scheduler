@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 
+// ============================================================================
+// APP CONFIGURATION - Update version here only!
+// ============================================================================
+const APP_VERSION = "1.2.02";
+
 // Color schemes
 type ColorScheme = "ocean" | "forest" | "violet" | "sunset" | "slate";
 
@@ -874,14 +879,14 @@ if (storageUsage && storageUsage.percentUsed > 90) {
       allAlarmsEnabled,
       customSounds: soundsData,
       exportDate: new Date().toISOString(),
-      version: '1.2.01'
+      version: APP_VERSION
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sound-scheduler-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `sound-scheduler-backup-v${APP_VERSION}-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1286,7 +1291,7 @@ const handleDeleteAlarm = async (id: number) => {
  <header className={`p-6 border-b flex justify-between items-center ${
   isDarkMode ? "border-slate-700" : "border-gray-300"
 }`}>
-  <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v1.2.01</span></h1>
+  <h1 className="text-2xl font-bold">🔔 Sound Scheduler <span className="text-sm opacity-50">v{APP_VERSION}</span></h1>
   
   <div className="flex gap-2">
     {/* Help Button - NEW */}
@@ -1354,7 +1359,7 @@ const handleDeleteAlarm = async (id: number) => {
     <div className={`p-4 border-b ${isDarkMode ? "border-slate-700" : "border-gray-200"}`}>
       <button
         onClick={() => {
-          alert(`🔔 Sound Scheduler v1.2.01\n\nSchedule sounds to play automatically at specific times and days.\n\n✨ Features:\n• Multiple alarms with custom schedules\n• 6 built-in sounds + custom audio\n• Volume control (0-10)\n• 5 color themes\n• Dark/Light mode\n• Export/Import backup\n• Browser notifications\n\n💾 Storage: All data stored locally in your browser\n\n🔒 Privacy: No account required, no data sent to servers\n\n🛠️ Tech: Next.js, Tailwind CSS, Web Audio API\n\n📅 Created: 2025`);
+          alert(`🔔 Sound Scheduler v${APP_VERSION}\n\nSchedule sounds to play automatically at specific times and days.\n\n✨ Features:\n• Multiple alarms with custom schedules\n• 6 built-in sounds + custom audio\n• Volume control (0-10)\n• 5 color themes\n• Dark/Light mode\n• Export/Import backup\n• Browser notifications\n\n💾 Storage: All data stored locally in your browser\n\n🔒 Privacy: No account required, no data sent to servers\n\n🛠️ Tech: Next.js, Tailwind CSS, Web Audio API\n\n📅 Created: 2025`);
           setIsHelpOpen(false);
         }}
         className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
